@@ -1,5 +1,10 @@
+# Virtual enviroment
 venv/
 env/
+
+# Python & Jupyter
+**/__pycache__/
+**/.ipynb_checkpoints/
+
+# Dataset folder
 data/
-key-file.txt
-key-file.txt.pub
