@@ -1,4 +1,5 @@
 venv/
 env/
+data/
 key-file.txt
 key-file.txt.pub
