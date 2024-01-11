@@ -1,10 +1,32 @@
 from fastapi import FastAPI, File, UploadFile, Request
 from typing import List
+from contextlib import asynccontextmanager
 import uvicorn
 
 from services.model import preprocessing
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Load SVM models from pickle file on startup
+    """
+    global MODEL_DATA
+    MODEL_DATA = preprocessing.load_model_data()
+    yield
+    MODEL_DATA.clear()
+
+
+app = FastAPI(
+    lifespan=lifespan,
+    title="Predict the class of a sign",
+    version="1.0",
+    contact={
+        "name": "Gleb Bulygin & Viktor Tikhomirov",
+        "url": "https://github.com/gbull25/signs-classification"
+    }
+    )
+
 
 
 @app.post("/predict/sign")

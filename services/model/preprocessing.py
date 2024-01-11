@@ -2,10 +2,19 @@ import numpy as np
 import io
 import pickle
 import cv2
+import lzma
 from skimage.feature import hog
 
-with open('services/model/hog_mid_proba.pickle', 'rb') as f:
-    model_data = pickle.load(f)
+# Загрузка сжатых моделей для телеграм бота
+with lzma.open("services/model/lzma_hog_proba.xz", "rb") as f:
+        model_data = pickle.load(f)
+
+# Загрузка сжатых моделей для сервиса Fastapi
+def load_model_data():
+    with lzma.open("services/model/lzma_hog_proba.xz", "rb") as f:
+        model_data = pickle.load(f)
+
+    return model_data
 
 def read_cv2_image(binaryimg):
 
