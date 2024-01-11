@@ -21,4 +21,4 @@ uvicorn==0.22.0
 python-multipart==0.0.6
 opencv-python==4.8.1.78
 pydantic-settings==2.1.0
-git+https://github.com/gbull25/signs-classification/
+-e git+https://github.com/gbull25/signs-classification.git@80dab6c018d20237fc1e77a985e8b496f434a277#egg=services_tools
