@@ -1,24 +1,12 @@
-from fastapi import FastAPI, File, UploadFile, Request
 from typing import List
-from contextlib import asynccontextmanager
+
 import uvicorn
+from fastapi import FastAPI, File, Request, UploadFile
 
 from services.model import preprocessing
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    Load SVM models from pickle file on startup
-    """
-    global MODEL_DATA
-    MODEL_DATA = preprocessing.load_model_data()
-    yield
-    MODEL_DATA.clear()
-
-
 app = FastAPI(
-    lifespan=lifespan,
+    # lifespan=lifespan,
     title="Predict the class of a sign",
     version="1.0",
     contact={
@@ -28,9 +16,8 @@ app = FastAPI(
     )
 
 
-
-@app.post("/predict/sign")
-def predict_one_sign(request: Request, file: bytes = File(...)):
+@app.post("/predict/sign_hog")
+def predict_one_sign_hog(request: Request, file: bytes = File(...)):
 
     data = {"success": False}
     data = preprocessing.predict_hog_image(file)
@@ -38,8 +25,8 @@ def predict_one_sign(request: Request, file: bytes = File(...)):
     return data
 
 
-@app.post("/predict/signs")
-def predict_many_signs(request: Request, files: List[UploadFile] = File(...)):
+@app.post("/predict/signs_hog")
+def predict_many_signs_hog(request: Request, files: List[UploadFile] = File(...)):
 
     data = {"success": False}
     image_list = []
@@ -56,6 +43,39 @@ def predict_many_signs(request: Request, files: List[UploadFile] = File(...)):
     for image in image_list:
         im_num += 1
         data.update({str(im_num)+" image":preprocessing.predict_hog_image(image)})
+
+    data.update({"success": True})
+
+    return data
+
+
+@app.post("/predict/sign_sift")
+def predict_one_sign_sift(request: Request, file: bytes = File(...)):
+
+    data = {"success": False}
+    data = preprocessing.predict_sift_image(file)
+
+    return data
+
+
+@app.post("/predict/signs_sift")
+def predict_many_signs_sift(request: Request, files: List[UploadFile] = File(...)):
+
+    data = {"success": False}
+    image_list = []
+
+    for file in files:
+        try:
+            image_list.append(file.file.read())
+        except Exception:
+            return {"message": "There was an error uploading the file(s)"}
+        finally:
+            file.file.close()
+
+    im_num = 0
+    for image in image_list:
+        im_num += 1
+        data.update({str(im_num)+" image":preprocessing.predict_sift_image(image)})
 
     data.update({"success": True})
 

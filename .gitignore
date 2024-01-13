@@ -42,3 +42,6 @@ share/python-wheels/
 # Models
 SIFT_jupyter/kmeans.gz
 SIFT_jupyter/sift_svm.gz
+services/model/kmeans.gz
+services/model/sift_svm.gz
+services/model/lzma_hog_proba.xz

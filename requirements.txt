@@ -58,7 +58,7 @@ pytz==2023.3.post1
 scikit-image==0.22.0
 scikit-learn==1.3.2
 scipy==1.11.4
--e git+https://github.com/gbull25/signs-classification.git@907c452ca3e4482f31714cd5319f2fc343b25c94#egg=services_tools
+# -e git+https://github.com/gbull25/signs-classification.git@907c452ca3e4482f31714cd5319f2fc343b25c94#egg=services_tools
 six==1.16.0
 sniffio==1.3.0
 starlette==0.32.0.post1
