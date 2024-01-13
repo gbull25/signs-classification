@@ -8,3 +8,7 @@ env/
 
 # Dataset folder
 data/
+
+# Models
+SIFT_jupyter/kmeans.gz
+SIFT_jupyter/sift_svm.gz
