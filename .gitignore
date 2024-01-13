@@ -1,6 +1,8 @@
 # Virtual enviroment
-venv/
-env/
+**venv/
+**env/
+.env
+.venv
 
 # Python & Jupyter
 **/__pycache__/
@@ -8,6 +10,34 @@ env/
 
 # Dataset folder
 data/
+
+# models 
+
+**data_short.pickle
+**hog_mid_proba.pickle
+
+# etc_stuff
+
+**Train_HOG_03-12-23.npy
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
 # Models
 SIFT_jupyter/kmeans.gz
