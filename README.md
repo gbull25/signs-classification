@@ -3,6 +3,65 @@
 
 Ссылка на Яндекс.Диск с данными - [тут](https://disk.yandex.ru/d/Lt3161xIH5m0MQ).
 
+
+Схема репозитория (WIP)
+------------
+    ├── .gitignore
+    │
+    ├── .gitattributes
+    │
+    ├── LICENSE
+    │
+    ├── experiments                  <- experiment .ipynb files
+    │
+    ├── jupyter                      <- main .ipynb files
+    │
+    ├── readme_data                  <- pictures and gifs for README.md 
+    │
+    ├── requirements.txt             <- main requirements for project
+    │
+    ├── requirements.txt             <- requirements for rende.com (unused)
+    │
+    ├── setup.py                     <- makes project pip installable (pip install -e .)
+    │                                   so src can be imported
+    │
+    └── services                     <- source code for services used in this project
+       ├── __init__.py               <- makes src a Python module
+       │
+       ├── fastapi                   <- FastAPI service
+       │   │
+       │   ├── __init__.py           <- makes src a Python module
+       │   └── main.py               <- main fastapi file
+       │
+       ├── models                    <- Directory with models and 
+       │   │                            data processing files
+       │   │
+       │   ├── __init__.py           <- makes src a Python module
+       │   └── preprocessing.py      <- functions to preprocess data and use trained
+       │                                models to make predictions 
+       └── tg_bot 
+           │
+           ├──__init__.py 
+           │
+           ├──handlers
+           │    │                       
+           │    ├── __init__.py      <- Makes src a Python module
+           │    │
+           │    ├── menu.py          <- buttons and text handlers
+           │    │
+           │    ├── predictions.py   <- pictures and albums handlers
+           │    │
+           │    └── retaing.csv      <- csv file with bot rating
+           │
+           ├── sample_images         <- firectory with sample images for bot
+           │
+           ├── bot.py                <- main function of telegram bot
+           │
+           ├── middleweare.py        <- middleware fucntions
+           │
+           └── config_reader.py      <- reader of .env file
+
+
 ## Задачи проекта
 - Создание и обучение ML модели классификации дорожных знаков.
 - Реализация простейшего FastAPI к модели, а также создание телеграм бота.
@@ -66,67 +125,7 @@
 Телеграм бот
 
 ![Alt Text](readme_data/tg_bot.gif)
-
-
-Схема репозитория (WIP)
-------------
-    ├── .gitignore
-    │
-    ├── .gitattributes
-    │
-    ├── LICENSE
-    │
-    ├── experiments                  <- experiment .ipynb files
-    │
-    ├── jupyter                      <- main .ipynb files
-    │
-    ├── readme_data                  <- pictures and gifs for README.md 
-    │
-    ├── requirements.txt             <- main requirements for project
-    │
-    ├── requirements.txt             <- requirements for rende.com (unused)
-    │
-    ├── setup.py                     <- makes project pip installable (pip install -e .)
-    │                                   so src can be imported
-    │
-    └── services                     <- source code for services used in this project
-       ├── __init__.py               <- makes src a Python module
-       │
-       ├── fastapi                   <- FastAPI service
-       │   │
-       │   ├── __init__.py           <- makes src a Python module
-       │   └── main.py               <- main fastapi file
-       │
-       ├── models                    <- Directory with models and 
-       │   │                            data processing files
-       │   │
-       │   ├── __init__.py           <- makes src a Python module
-       │   └── preprocessing.py      <- functions to preprocess data and use trained
-       │                                models to make predictions 
-       └── tg_bot 
-           │
-           ├──__init__.py 
-           │
-           ├──handlers
-           │    │                       
-           │    ├── __init__.py      <- Makes src a Python module
-           │    │
-           │    ├── menu.py          <- buttons and text handlers
-           │    │
-           │    ├── predictions.py   <- pictures and albums handlers
-           │    │
-           │    └── retaing.csv      <- csv file with bot rating
-           │
-           ├── sample_images         <- firectory with sample images for bot
-           │
-           ├── bot.py                <- main function of telegram bot
-           │
-           ├── middleweare.py        <- middleware fucntions
-           │
-           └── config_reader.py      <- reader of .env file
     
-
-
 
 ### Авторы проекта
 [Булыгин Глеб](https://github.com/gbull25)
