@@ -20,7 +20,7 @@
     │
     ├── requirements.txt             <- main requirements for project
     │
-    ├── requirements.txt             <- requirements for rende.com (unused)
+    ├── render_requirements.txt      <- requirements for render.com (unused)
     │
     ├── setup.py                     <- makes project pip installable (pip install -e .)
     │                                   so src can be imported
@@ -43,7 +43,7 @@
            │
            ├──__init__.py 
            │
-           ├──handlers
+           ├── handlers
            │    │                       
            │    ├── __init__.py      <- Makes src a Python module
            │    │
