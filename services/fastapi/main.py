@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List, Union
 
 import uvicorn
 from fastapi import FastAPI, File, Request, UploadFile
@@ -17,18 +17,33 @@ app = FastAPI(
 
 
 @app.post("/predict/sign_hog")
-def predict_one_sign_hog(request: Request, file: bytes = File(...)):
+def predict_one_sign_hog(file: bytes = File(...)) -> Dict[str, Union[int, str, float, bool]]:
+    """
+    Predict traffic sign class on the image HOG features extraction (one image).
 
-    data = {"success": False}
+    Args:
+        - file (bytes): image represented by bytes.
+
+    Returns:
+        - data (dict): dict with info about image processing and sign class.
+    """
     data = preprocessing.predict_hog_image(file)
 
     return data
 
 
 @app.post("/predict/signs_hog")
-def predict_many_signs_hog(request: Request, files: List[UploadFile] = File(...)):
+def predict_many_signs_hog(files: List[UploadFile] = File(...)) -> Dict[str, Dict[str, Union[int, str, float, bool]]]:
+    """
+    Predict traffic sign class on the image HOG features extraction (many images).
 
-    data = {"success": False}
+    Args:
+        - files (list): list with images represented by bytes.
+
+    Returns:
+        - data (dict): dict with info about images processing and signs class.
+    """
+    data = {}
     image_list = []
 
     for file in files:
@@ -42,26 +57,39 @@ def predict_many_signs_hog(request: Request, files: List[UploadFile] = File(...)
     im_num = 0
     for image in image_list:
         im_num += 1
-        data.update({str(im_num)+" image":preprocessing.predict_hog_image(image)})
-
-    data.update({"success": True})
+        data.update({str(im_num) + " image":preprocessing.predict_hog_image(image)})
 
     return data
 
 
 @app.post("/predict/sign_sift")
-def predict_one_sign_sift(request: Request, file: bytes = File(...)):
+def predict_one_sign_sift(file: bytes = File(...)) -> Dict[str, Union[int, str, float, bool]]:
+    """
+    Predict traffic sign class on the image using SIFT features extraction (one image).
 
-    data = {"success": False}
+    Args:
+        - file (bytes): image represented by bytes.
+
+    Returns:
+        - data (dict): dict with info about image processing and sign class.
+    """
     data = preprocessing.predict_sift_image(file)
 
     return data
 
 
 @app.post("/predict/signs_sift")
-def predict_many_signs_sift(request: Request, files: List[UploadFile] = File(...)):
+def predict_many_signs_sift(files: List[UploadFile] = File(...)) -> Dict[str, Dict[str, Union[int, str, float, bool]]]:
+    """
+    Predict traffic sign class on the image SIFT features extraction (many images).
 
-    data = {"success": False}
+    Args:
+        - files (list): list with images represented by bytes.
+
+    Returns:
+        - data (dict): dict with info about images processing and signs class.
+    """
+    data = {}
     image_list = []
 
     for file in files:
@@ -75,11 +103,10 @@ def predict_many_signs_sift(request: Request, files: List[UploadFile] = File(...
     im_num = 0
     for image in image_list:
         im_num += 1
-        data.update({str(im_num)+" image":preprocessing.predict_sift_image(image)})
-
-    data.update({"success": True})
+        data.update({str(im_num) + " image": preprocessing.predict_sift_image(image)})
 
     return data
+
 
 if __name__ == "__main__":
     uvicorn.run(app, port=8000)

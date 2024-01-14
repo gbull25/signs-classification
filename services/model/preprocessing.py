@@ -1,6 +1,7 @@
 import io
 import lzma
 import pickle
+from typing import Dict, Union
 
 import cv2
 import joblib
@@ -10,10 +11,63 @@ from skimage.feature import hog
 HOG_MODEL = joblib.load("services/model/lzma_hog_proba.xz")
 KMEANS_MODEL = joblib.load("services/model/kmeans.gz")
 SIFT_MODEL = joblib.load("services/model/sift_svm.gz")
+SIGNS_DESC = {
+    0: 'Speed Limit 20 kmph',
+    1: 'Speed Limit 30 kmph',
+    2: 'Speed Limit 50 kmph',
+    3: 'Speed Limit 60 kmph',
+    4: 'Speed Limit 70 kmph',
+    5: 'Speed Limit 80 kmph',
+    6: 'End of Speed Limit 80 kmph',
+    7: 'Speed Limit 100 kmph',
+    8: 'Speed Limit 120 kmph',
+    9: 'No Passing',
+    10: 'No Passing vehicle over 3.5 ton',
+    11: 'Right-of-way at intersection',
+    12: 'Priority road',
+    13: 'Yield',
+    14: 'Stop',
+    15: 'No vehicles',
+    16: 'Veh > 3.5 tons prohibited',
+    17: 'No entry',
+    18: 'General caution',
+    19: 'Dangerous curve left',
+    20: 'Dangerous curve right',
+    21: 'Double curve',
+    22: 'Bumpy road',
+    23: 'Slippery road',
+    24: 'Road narrows on the right',
+    25: 'Road work',
+    26: 'Traffic signals',
+    27: 'Pedestrians',
+    28: 'Children crossing',
+    29: 'Bicycles crossing',
+    30: 'Beware of ice/snow',
+    31: 'Wild animals crossing',
+    32: 'End speed + passing limits',
+    33: 'Turn right ahead',
+    34: 'Turn left ahead',
+    35: 'Ahead only',
+    36: 'Go straight or right',
+    37: 'Go straight or left',
+    38: 'Keep right',
+    39: 'Keep left',
+    40: 'Roundabout mandatory',
+    41: 'End of no passing',
+    42: 'End no passing vehicle > 3.5 tons'
+}
 
 
-def read_cv2_image(binaryimg):
+def read_cv2_image(binaryimg: bytes) -> np.array:
+    """
+    Read passed image to numpy array.
 
+    Args:
+        - binaryimg (bytes): bytes representing an image.
+
+    Returns:
+        - image (np.array): np.array representing an image.
+    """
     stream = io.BytesIO(binaryimg)
 
     image = np.asarray(bytearray(stream.read()), dtype="uint8")
@@ -22,8 +76,17 @@ def read_cv2_image(binaryimg):
     return image
 
 
-def predict_hog_image(binaryimg):
-    
+def predict_hog_image(binaryimg: bytes) -> Dict[str, Union[int, str, float, bool]]:
+    """
+    Load and preprocess image containing a traffic sign, predict what that sign
+    using HOG feature extraction.
+
+    Args:
+        - binaryimg (bytes): bytes representing an image.
+
+    Returns:
+        - data (dict): dict with info about image processing.
+    """
     data = {"success": False}
     if binaryimg is None:
         return data
@@ -51,15 +114,29 @@ def predict_hog_image(binaryimg):
     confidence = HOG_MODEL['best_model'].predict_proba(data_reshaped)[0][pred_class-1]
 
 
-    data.update({"sign class": pred_class, 
-                 "confidence": float(f"{confidence.tolist():.4f}"), 
-                 "success": True})
+    data.update(
+        {
+            "sign_class": pred_class,
+            "sign_description": SIGNS_DESC[pred_class],
+            "confidence": float(f"{confidence.tolist():.4f}"), 
+            "success": True
+        }
+    )
 
     return data
 
 
 def preprocess_sift_image(img: np.array, img_shape: tuple = (32, 32)) -> np.array:
+    """
+    Preprocess image, represented by np.array.
 
+    Args:
+        - img (np.array): image represented by np.array.
+        - img_shape (typle=(32, 32)): resulting shape of an image, defaults to 32x32.
+
+    Returns:
+        - normalized_gray_img (np.array): preprocessed image represented as np.array.
+    """
     # Equalize histogram, convert to gray
     ycrcb_img = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
     ycrcb_img[:, :, 0] = cv2.equalizeHist(ycrcb_img[:, :, 0])
@@ -79,8 +156,17 @@ def preprocess_sift_image(img: np.array, img_shape: tuple = (32, 32)) -> np.arra
     return normalized_gray_img
 
 
-def predict_sift_image(binaryimg):
-     
+def predict_sift_image(binaryimg: bytes) -> Dict[str, Union[int, str, float, bool]]:
+    """
+    Load and preprocess image containing a traffic sign, predict what that sign
+    using SIFT feature extraction.
+
+    Args:
+        - binaryimg (bytes): bytes representing an image.
+
+    Returns:
+        - data (dict): dict with info about image processing.
+    """
     data = {"success": False}
     if binaryimg is None:
         return data
@@ -98,18 +184,20 @@ def predict_sift_image(binaryimg):
     try:
         closest_idx = KMEANS_MODEL.predict(des)
     except ValueError as ve:
-        # Skipping when des is empty
+        # Skipping when no descriptors are found
         pass
 
     print('im here')
     for idx in closest_idx:
         features[idx] += 1
 
-    pred_cls = SIFT_MODEL.predict(features.reshape(1, -1))
+    pred_class = int(SIFT_MODEL.predict(features.reshape(1, -1))[0])
 
+    # We cant predict confidence level in that case, so for the uniformity we say that its 100.0.
     data.update(
         {
-            "sign class": int(pred_cls[0]), 
+            "sign_class": pred_class,
+            "sign_description": SIGNS_DESC[pred_class],
             "confidence": 100.0, 
             "success": True
         }
