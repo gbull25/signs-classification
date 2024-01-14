@@ -86,21 +86,23 @@
     │
     ├── requirements.txt             <- requirements for rende.com (unused)
     │
-    ├── setup.py                     <- makes project pip installable (pip install -e .) so src can be imported
+    ├── setup.py                     <- makes project pip installable (pip install -e .)
+    │                                   so src can be imported
     │
-    └── services                     <- Source code for services used in this project
-       ├── __init__.py               <- Makes src a Python module
+    └── services                     <- source code for services used in this project
+       ├── __init__.py               <- makes src a Python module
        │
        ├── fastapi                   <- FastAPI service
        │   │
-       │   ├── __init__.py           <- Makes src a Python module
-       │   └── main.py
+       │   ├── __init__.py           <- makes src a Python module
+       │   └── main.py               <- main fastapi file
        │
-       ├── models                    <- Functions to preprocess data and use trained
-       │   │                            models to make predictions 
-       │   ├── __init__.py           <- Makes src a Python module
-       │   └── preprocessing.py      <- Makes src a Python module
-       │
+       ├── models                    <- Directory with models and 
+       │   │                            data processing files
+       │   │
+       │   ├── __init__.py           <- makes src a Python module
+       │   └── preprocessing.py      <- functions to preprocess data and use trained
+       │                                models to make predictions 
        └── tg_bot 
            │
            ├──__init__.py 
@@ -113,9 +115,9 @@
            │    │
            │    ├── predictions.py   <- pictures and albums handlers
            │    │
-           │    └── retaing.csv      <- CSV file with bot rating
+           │    └── retaing.csv      <- csv file with bot rating
            │
-           ├──sample_images          <- sample images for bot
+           ├── sample_images         <- firectory with sample images for bot
            │
            ├── bot.py                <- main function of telegram bot
            │
