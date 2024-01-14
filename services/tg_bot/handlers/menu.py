@@ -82,8 +82,6 @@ async def upload_photo(message: Message):
         image_from_pc,
         caption="Прошу, ваша тестовая картинка готова\!"
     )
-    #file_ids.append(result.photo[-1].file_id)
-    #await message.answer("Отправленные файлы:\n"+"\n".join(file_ids))
 
 
 # Хэндлер на команду получить картинку

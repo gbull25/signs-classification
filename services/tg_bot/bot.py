@@ -9,7 +9,7 @@ from middleware import Album_Middleware
 
 async def main():
     # Включаем логирование, чтобы не пропустить важные сообщения
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s: [%(levelname)s] %(message)s')
     # Объект бота
     bot = Bot(token=config.bot_token.get_secret_value(), parse_mode='MarkdownV2')
     # Объект диспетчера
