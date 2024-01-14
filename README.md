@@ -67,6 +67,65 @@
 
 ![Alt Text](readme_data/tg_bot.gif)
 
+
+Схема репозитория (WIP)
+------------
+    ├── .gitignore
+    │
+    ├── .gitattributes
+    │
+    ├── LICENSE
+    │
+    ├── experiments                  <- experiment .ipynb files
+    │
+    ├── jupyter                      <- main .ipynb files
+    │
+    ├── readme_data                  <- pictures and gifs for README.md 
+    │
+    ├── requirements.txt             <- main requirements for project
+    │
+    ├── requirements.txt             <- requirements for rende.com (unused)
+    │
+    ├── setup.py                     <- makes project pip installable (pip install -e .) so src can be imported
+    │
+    └── services                     <- Source code for services used in this project
+       ├── __init__.py               <- Makes src a Python module
+       │
+       ├── fastapi                   <- FastAPI service
+       │   │
+       │   ├── __init__.py           <- Makes src a Python module
+       │   └── main.py
+       │
+       ├── models                    <- Functions to preprocess data and use trained
+       │   │                            models to make predictions 
+       │   ├── __init__.py           <- Makes src a Python module
+       │   └── preprocessing.py      <- Makes src a Python module
+       │
+       └── tg_bot 
+           │
+           ├──__init__.py 
+           │
+           ├──handlers
+           │    │                       
+           │    ├── __init__.py      <- Makes src a Python module
+           │    │
+           │    ├── menu.py          <- buttons and text handlers
+           │    │
+           │    ├── predictions.py   <- pictures and albums handlers
+           │    │
+           │    └── retaing.csv      <- CSV file with bot rating
+           │
+           ├──sample_images          <- sample images for bot
+           │
+           ├── bot.py                <- main function of telegram bot
+           │
+           ├── middleweare.py        <- middleware fucntions
+           │
+           └── config_reader.py      <- reader of .env file
+    
+
+
+
 ### Авторы проекта
 [Булыгин Глеб](https://github.com/gbull25)
 
