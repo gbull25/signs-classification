@@ -1,9 +1,11 @@
-import emoji
 from io import BytesIO
-from aiogram import Router, F, Bot
-from aiogram.types import Message, InputMediaPhoto
-from services.tg_bot.config_reader import config
+
+import emoji
+from aiogram import Bot, F, Router
+from aiogram.types import InputMediaPhoto, Message
+
 from services.model import preprocessing
+from services.tg_bot.config_reader import config
 
 bot = Bot(token=config.bot_token.get_secret_value(), parse_mode='MarkdownV2')
 router = Router()
@@ -23,9 +25,9 @@ async def handle_albums(message: Message, album: list[Message]):
             await bot.download(msg.photo[-1], destination=io)
             im = io.getvalue()
             data_hog = preprocessing.predict_hog_image(im)
-            hog_pred.append(data_hog['sign class'])
+            hog_pred.append((data_hog['sign_class'], data_hog['sign_description']))
             data_sift = preprocessing.predict_sift_image(im)
-            sift_pred.append(data_sift['sign class'])
+            sift_pred.append((data_sift['sign_class'], data_sift['sign_description']))
 
     data_class = {'hog_class': hog_pred, 'sift_class': sift_pred}
 
@@ -36,8 +38,8 @@ async def handle_albums(message: Message, album: list[Message]):
     for hog, sift in zip(data_class['hog_class'], data_class['sift_class']):
         i += 1
         await message.reply(f'На фотографии номер {i}:\n'
-                           f'*HOG SVM* считает, что знак {hog} класса,\n'
-                           f'*SIFT SVM* считает, что знак {sift} класса\.') 
+                           f'*HOG SVM* считает, что знак {hog[0]} класса \(_{hog[1]}_\),\n'
+                           f'*SIFT SVM* считает, что знак {sift[0]} класса \(_{sift[1]}_\)\.') 
 
 
 # Хэндлер на одну фотографию
@@ -48,5 +50,5 @@ async def predict_image(message: Message):
     im = io.getvalue()
     data_hog = preprocessing.predict_hog_image(im)
     data_sift = preprocessing.predict_sift_image(im)
-    await message.reply(f'*HOG SVM* считает, что этот знак {data_hog["sign class"]} класса,\n'
-                        f'*SIFT SVM* считает, что этот знак {data_sift["sign class"]} класса\.')
+    await message.reply(f'*HOG SVM* считает, что этот знак {data_hog["sign_class"]} класса \(_{data_hog["sign_description"]}_\),\n'
+                        f'*SIFT SVM* считает, что этот знак {data_sift["sign_class"]} класса \(_{data_sift["sign_description"]}_\)\.')

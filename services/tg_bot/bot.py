@@ -1,9 +1,11 @@
 import asyncio
 import logging
+
 from aiogram import Bot, Dispatcher
+from config_reader import config
 from handlers import menu, predictions
 from middleware import Album_Middleware
-from config_reader import config
+
 
 async def main():
     # Включаем логирование, чтобы не пропустить важные сообщения

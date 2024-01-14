@@ -1,4 +1,5 @@
 import io
+import logging
 import lzma
 import pickle
 from typing import Dict, Union
@@ -22,13 +23,13 @@ SIGNS_DESC = {
     7: 'Speed Limit 100 kmph',
     8: 'Speed Limit 120 kmph',
     9: 'No Passing',
-    10: 'No Passing vehicle over 3.5 ton',
-    11: 'Right-of-way at intersection',
+    10: 'No Passing vehicle over 3,5 ton',
+    11: 'Right of way at intersection',
     12: 'Priority road',
     13: 'Yield',
     14: 'Stop',
     15: 'No vehicles',
-    16: 'Veh > 3.5 tons prohibited',
+    16: 'Veh over 3,5 tons prohibited',
     17: 'No entry',
     18: 'General caution',
     19: 'Dangerous curve left',
@@ -42,9 +43,9 @@ SIGNS_DESC = {
     27: 'Pedestrians',
     28: 'Children crossing',
     29: 'Bicycles crossing',
-    30: 'Beware of ice/snow',
+    30: 'Beware of ice or snow',
     31: 'Wild animals crossing',
-    32: 'End speed + passing limits',
+    32: 'End speed and passing limits',
     33: 'Turn right ahead',
     34: 'Turn left ahead',
     35: 'Ahead only',
@@ -54,7 +55,7 @@ SIGNS_DESC = {
     39: 'Keep left',
     40: 'Roundabout mandatory',
     41: 'End of no passing',
-    42: 'End no passing vehicle > 3.5 tons'
+    42: 'End no passing vehicle over 3,5 tons'
 }
 
 
@@ -72,6 +73,7 @@ def read_cv2_image(binaryimg: bytes) -> np.array:
 
     image = np.asarray(bytearray(stream.read()), dtype="uint8")
     image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    logging.debug(f'Image resolution: {image.shape}.')
 
     return image
 
@@ -187,9 +189,10 @@ def predict_sift_image(binaryimg: bytes) -> Dict[str, Union[int, str, float, boo
         # Skipping when no descriptors are found
         pass
 
-    print('im here')
     for idx in closest_idx:
         features[idx] += 1
+
+    logging.debug(f'SIFT feature vector: {features}')
 
     pred_class = int(SIFT_MODEL.predict(features.reshape(1, -1))[0])
 
