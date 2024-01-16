@@ -127,9 +127,16 @@
 ![Alt Text](readme_data/tg_bot.gif)
     
 
+### Куратор
+
+| Имя | Телеграм | 
+|----------|----------|
+| Беляев Артем | @karaoke_tutu |
+
+
 ### Авторы проекта
-[Булыгин Глеб](https://github.com/gbull25)
 
-[Соловьев Дима](https://github.com/libernightin)
-
-[Тихомиров Витя](https://github.com/onthebox)
+| Имя | Телеграм | 
+|----------|----------|
+| Булыгин Глеб  | @jdbelg |
+| Тихомиров Витя | @onthebox |
