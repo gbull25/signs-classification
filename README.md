@@ -88,9 +88,9 @@
 
 |              | precision | recall   | f1-score | support |
 | ------------ | --------- | -------- | -------- | ------- |
-| accuracy     |           |          | 0.59     | 12630   |
-| macro avg    | 0.55      |  0.54    | 0.53     | 12630   |
-| weighted avg | 0.62      |  0.59    | 0.59     | 12630   |
+| accuracy     |           |          | 0.61     | 12630   |
+| macro avg    | 0.57      |  0.57    | 0.55     | 12630   |
+| weighted avg | 0.64      |  0.61    | 0.61     | 12630   |
 
 ### SIFT + Bag-Of-Visual-Words + SVM
 
