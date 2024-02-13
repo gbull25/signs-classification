@@ -84,7 +84,7 @@ async def upload_photo(message: Message):
     )
 
 
-# Хэндлер на команду получить картинку
+# Хэндлер на команду получить альбом
 @router.message(F.text.lower() == "получить альбом")
 @router.message(Command('images'))
 async def upload_photos(message: Message):

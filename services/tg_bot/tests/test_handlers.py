@@ -7,6 +7,7 @@ import pytest
 import pytest_asyncio
 from aiogram.filters import Command
 from aiogram.methods import AnswerCallbackQuery, SendMessage
+from aiogram.types.input_file import FSInputFile
 from aiogram_tests import MockedBot
 from aiogram_tests.handler import CallbackQueryHandler, MessageHandler
 from aiogram_tests.types.dataset import CALLBACK_QUERY, MESSAGE
@@ -27,5 +28,17 @@ async def test_current_rating(current_rating):
     requester = MockedBot(request_handler=MessageHandler(menu.current_rating, auto_mock_success=True))
     calls = await requester.query(MESSAGE.as_object(text="текущий рейтинг"))
     answer_message = calls.send_message.fetchone().text
-    true_rating = current_rating
-    assert answer_message == true_rating * emoji.emojize(":star:")
+
+    assert answer_message == current_rating * emoji.emojize(":star:"), "Invalid rating calculation"
+
+
+@pytest.mark.asyncio
+async def test_upload_photo():
+    requester = MockedBot(request_handler=MessageHandler(menu.upload_photo, auto_mock_success=True))
+    calls = await requester.query(MESSAGE.as_object(text="получить картинку"))
+    answer_message = calls.send_photo.fetchone()
+
+    assert hasattr(answer_message, "photo"), "Received reply has no attribute 'photo'."
+    assert hasattr(answer_message, "caption"), "Received reply has no attribute 'caption'."
+    assert isinstance(answer_message.photo, FSInputFile), f"Recieved reply 'photo' content of a wrong type: {type(answer_message.photo)}."
+    assert answer_message.caption == "Прошу, ваша тестовая картинка готова\!", "Recieved reply 'caption' has invalid content."
