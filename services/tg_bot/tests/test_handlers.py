@@ -42,3 +42,23 @@ async def test_upload_photo():
     assert hasattr(answer_message, "caption"), "Received reply has no attribute 'caption'."
     assert isinstance(answer_message.photo, FSInputFile), f"Recieved reply 'photo' content of a wrong type: {type(answer_message.photo)}."
     assert answer_message.caption == "Прошу, ваша тестовая картинка готова\!", "Recieved reply 'caption' has invalid content."
+
+
+@pytest.mark.asyncio
+async def test_cmd_start():
+    requester = MockedBot(MessageHandler(menu.cmd_start, Command(commands=["start"])))
+    calls = await requester.query(MESSAGE.as_object(text="/start"))
+
+    # Для первого сообщения
+    user_full_name = "FirstName LastName"
+    answer_message = calls.send_message.fetchall()[0].text
+    true_text = (f'Привет, {user_full_name}\!\nЭтот бот умеет '
+                f'предсказывать класс немецких дорожных знаков\.\n'
+                f'Загрузи картинку со знаком или даже несколько, '
+                f'и бот попробует угадать, какой класс знака на них изображен\.')
+    assert answer_message == true_text, "Recieved reply has invalid content."
+
+    # Для второго сообщения
+    answer_message = calls.send_message.fetchall()[1].text
+    true_text = 'Что бы вы хотели узнать?'
+    assert answer_message == true_text, "Recieved reply has invalid content."
