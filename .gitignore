@@ -18,6 +18,7 @@ data/
 
 # etc_stuff
 
+**coverage
 **Train_HOG_03-12-23.npy
 
 # Distribution / packaging
