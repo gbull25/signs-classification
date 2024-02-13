@@ -188,7 +188,7 @@ async def get_rating(callback: types.CallbackQuery):
 
 # Хэндлер на команду текущий рейтинг
 @router.message(F.text.lower() == "текущий рейтинг")
-async def info(message: types.Message):
+async def current_rating(message: types.Message):
     rating_list = []
     await message.reply(f"Считаю текущий рейтинг бота\.\.")
     async with aiofiles.open('services/tg_bot/handlers/rating.csv', mode="r", encoding="utf-8", newline="") as f:
