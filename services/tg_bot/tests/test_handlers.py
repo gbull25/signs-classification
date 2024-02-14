@@ -44,8 +44,22 @@ async def test_upload_photo():
     assert answer_message.caption == "Прошу, ваша тестовая картинка готова\!", "Recieved reply's 'caption' attribute  has invalid content."
 
 
+# upload_photos handler test
 @pytest.mark.asyncio
-async def test_upload_album():
+async def test_upload_photos_handler():
+    requester = MockedBot(request_handler=MessageHandler(menu.upload_photos, auto_mock_success=True))
+    calls = await requester.query(MESSAGE.as_object(text="получить альбом"))
+    answer_message = calls.send_message.fetchone()
+
+    assert hasattr(answer_message, "reply_markup"), "Recieved reply has no attribute 'reply markup'."
+    assert answer_message.reply_markup.get("inline_keyboard"), "Recieved reply has no inline keyboard."
+    assert len(answer_message.reply_markup.get("inline_keyboard")[0]) == 5, f"Recieved reply wrong number of keyboard buttons: {len(answer_message.reply_markup.get('inline_keyboard')[0])} != 5."
+    assert answer_message.text == "Сколько картинок Вам отправить?", "Recieved reply has invalid content."
+
+
+# send_album callback test
+@pytest.mark.asyncio
+async def test_send_album_callback():
     requester = MockedBot(CallbackQueryHandler(menu.send_album))
 
     # Make test data to request n_photos in album
