@@ -1,6 +1,5 @@
 from io import BytesIO
 
-import emoji
 from aiogram import Bot, F, Router
 from aiogram.types import InputMediaPhoto, Message
 
@@ -9,6 +8,7 @@ from services.tg_bot.config_reader import config
 
 bot = Bot(token=config.bot_token.get_secret_value(), parse_mode='MarkdownV2')
 router = Router()
+
 
 # Хэндлер на альбом фотографий
 @router.message(F.media_group_id, F.content_type.in_({'photo'}))
@@ -50,5 +50,7 @@ async def predict_image(message: Message):
     im = io.getvalue()
     data_hog = preprocessing.predict_hog_image(im)
     data_sift = preprocessing.predict_sift_image(im)
-    await message.reply(f'*HOG SVM* считает, что этот знак {data_hog["sign_class"]} класса \(_{data_hog["sign_description"]}_\),\n'
-                        f'*SIFT SVM* считает, что этот знак {data_sift["sign_class"]} класса \(_{data_sift["sign_description"]}_\)\.')
+    await message.reply(f'*HOG SVM* считает, что этот знак '
+                        f'{data_hog["sign_class"]} класса \(_{data_hog["sign_description"]}_\),\n'
+                        f'*SIFT SVM* считает, что этот знак '
+                        f'{data_sift["sign_class"]} класса \(_{data_sift["sign_description"]}_\)\.')
