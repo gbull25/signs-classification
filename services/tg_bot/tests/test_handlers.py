@@ -1,21 +1,39 @@
 import pathlib
+import unittest
+from io import BytesIO
+from unittest import mock
 
 import emoji
 import numpy as np
 import pandas as pd
 import pytest
 import pytest_asyncio
+from aiogram import Bot
+from aiogram.enums.input_media_type import InputMediaType
 from aiogram.filters import Command
-from aiogram.methods import AnswerCallbackQuery, SendMessage
+from aiogram.methods import AnswerCallbackQuery, SendMessage, SendPhoto
 from aiogram.types.input_file import FSInputFile
+from aiogram.types.photo_size import PhotoSize
 from aiogram_tests import MockedBot
 from aiogram_tests.handler import CallbackQueryHandler, MessageHandler
-from aiogram_tests.types.dataset import CALLBACK_QUERY, MESSAGE
+from aiogram_tests.types.dataset import (
+    CALLBACK_QUERY,
+    MESSAGE,
+    MESSAGE_WITH_PHOTO,
+    PHOTO,
+)
 
-from services.tg_bot.handlers import menu
+from services.tg_bot.handlers import menu, predictions
 
 RATING_FILE_PATH = pathlib.Path("services/tg_bot/handlers/rating.csv")
 # RUN python -m pytest ./services/tg_bot
+
+
+def patch_download():
+    with open('./services/tg_bot/sample_images/01576.png', 'rb') as f:
+        io = BytesIO(f.read())
+    return io
+
 
 @pytest_asyncio.fixture
 async def current_rating():
@@ -96,3 +114,29 @@ async def test_cmd_start():
     answer_message = calls.send_message.fetchall()[1].text
     true_text = 'Что бы вы хотели узнать?'
     assert answer_message == true_text, "Recieved reply has invalid content."
+
+@mock.patch.object(Bot, 'download', patch_download, create=True)
+@pytest.mark.asyncio
+async def test_predict_image():
+    requester = MockedBot(request_handler=MessageHandler(predictions.predict_image))
+
+    calls = await requester.query(MESSAGE.as_object())
+    answer_message = calls.send_message.fetchone().text
+    print(answer_message)
+    # msg = SendPhoto(chat_id=12345678, photo=file.filename)
+    # msg = file
+    # print(type(msg))
+    # print(dir(msg))
+    # print(msg.filename)
+
+    # for a in dir(msg):
+    #     if not a.startswith('__'):
+
+    #         print(a)
+    #         print(getattr(msg, a), '\n')
+
+    # photo_obj = PHOTO
+    # photo_obj._data.update({'file_path'})
+    # photo_obj._data.pop('file_id')
+
+    # print(answer_message)

@@ -45,8 +45,8 @@ async def handle_albums(message: Message, album: list[Message]):
 # Хэндлер на одну фотографию
 @router.message(F.photo)
 async def predict_image(message: Message):
-    io = BytesIO()
-    await bot.download(message.photo[-1], destination=io)
+    # io = BytesIO()
+    io = await bot.download(message.photo[-1])
     im = io.getvalue()
     data_hog = preprocessing.predict_hog_image(im)
     data_sift = preprocessing.predict_sift_image(im)
