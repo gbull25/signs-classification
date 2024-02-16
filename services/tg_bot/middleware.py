@@ -1,13 +1,10 @@
-from aiogram import Bot, Dispatcher,types, BaseMiddleware
-from aiogram.filters.command import Command
-from aiogram.types import Message, FSInputFile, InputMediaPhoto, InputMedia, ContentType as CT
-from aiogram import F
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-from typing import List, Union
+from aiogram import BaseMiddleware
+from aiogram.types import Message
 from typing import Callable, Any, Awaitable, Union
 import asyncio
 
-class Album_Middleware(BaseMiddleware):
+
+class AlbumMiddleware(BaseMiddleware):
     album_data: dict = {}
 
     def __init__(self, latency: Union[int, float] = 0.01):

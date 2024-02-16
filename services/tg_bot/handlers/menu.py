@@ -17,7 +17,6 @@ router = Router()
 # Хэндлер на команду /start
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
-    #user_id = message.from_user.id
     user_full_name = message.from_user.full_name
     await message.answer(f'Привет, {user_full_name}\!\nЭтот бот умеет '
                          f'предсказывать класс немецких дорожных знаков\.\n'
@@ -69,16 +68,16 @@ async def info(message: types.Message):
             "'Текущий рейтинг'\.\nСпасибо и хорошего вам дня\!")
     await message.answer(text)
 
+
 # Хэндлер на команду получить картинку
 @router.message(F.text.lower() == "получить картинку")
 @router.message(Command('image'))
 async def upload_photo(message: Message):
-    #file_ids = []
     path = "services/tg_bot/sample_images/**"
     filename = random.choice(glob.glob(path))
     # Отправка файла из файловой системы
     image_from_pc = FSInputFile(path=filename)
-    result = await message.answer_photo(
+    await message.answer_photo(
         image_from_pc,
         caption="Прошу, ваша тестовая картинка готова\!"
     )
