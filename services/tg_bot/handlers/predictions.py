@@ -6,13 +6,12 @@ from aiogram.types import InputMediaPhoto, Message
 from services.model import preprocessing
 from services.tg_bot.config_reader import config
 
-bot = Bot(token=config.bot_token.get_secret_value(), parse_mode='MarkdownV2')
 router = Router()
 
 
 # Хэндлер на альбом фотографий
 @router.message(F.media_group_id, F.content_type.in_({'photo'}))
-async def handle_albums(message: Message, album: list[Message]):
+async def handle_albums(message: Message, album: list[Message], bot: Bot):
     media_group = []
     hog_pred = []
     sift_pred = []
@@ -44,9 +43,9 @@ async def handle_albums(message: Message, album: list[Message]):
 
 # Хэндлер на одну фотографию
 @router.message(F.photo)
-async def predict_image(message: Message):
-    # io = BytesIO()
-    io = await bot.download(message.photo[-1])
+async def predict_image(message: Message, bot: Bot):
+    io = BytesIO()
+    io = await bot.download(message.photo[-1], destination=io)
     im = io.getvalue()
     data_hog = preprocessing.predict_hog_image(im)
     data_sift = preprocessing.predict_sift_image(im)

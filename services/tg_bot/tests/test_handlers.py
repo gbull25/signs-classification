@@ -31,7 +31,7 @@ RATING_FILE_PATH = pathlib.Path("services/tg_bot/handlers/rating.csv")
 # RUN python -m pytest ./services/tg_bot
 
 
-def patch_download():
+async def mock_download(*args, **kwargs):
     with open('./services/tg_bot/sample_images/01576.png', 'rb') as f:
         io = BytesIO(f.read())
     return io
@@ -194,31 +194,19 @@ async def test_cmd_start():
     true_text = 'Что бы вы хотели узнать?'
     assert answer_message == true_text, "Recieved reply has invalid content."
 
-@mock.patch.object(Bot, 'download', patch_download, create=True)
+
+@mock.patch.object(Bot, 'download', mock_download, create=True)
 @pytest.mark.asyncio
 async def test_predict_image():
     requester = MockedBot(request_handler=MessageHandler(predictions.predict_image))
 
     calls = await requester.query(MESSAGE.as_object())
     answer_message = calls.send_message.fetchone().text
-    print(answer_message)
-    # msg = SendPhoto(chat_id=12345678, photo=file.filename)
-    # msg = file
-    # print(type(msg))
-    # print(dir(msg))
-    # print(msg.filename)
+    true_text = "*HOG SVM* считает, что этот знак 38 класса \(_Keep right_\)," \
+                "*SIFT SVM* считает, что этот знак 38 класса \(_Keep right_\)\."
 
-    # for a in dir(msg):
-    #     if not a.startswith('__'):
+    assert answer_message == true_text, "Recieved reply has invalid content."
 
-    #         print(a)
-    #         print(getattr(msg, a), '\n')
-
-    # photo_obj = PHOTO
-    # photo_obj._data.update({'file_path'})
-    # photo_obj._data.pop('file_id')
-
-    # print(answer_message)
 
 @pytest.mark.asyncio
 async def test_info():
