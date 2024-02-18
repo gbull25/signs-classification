@@ -18,12 +18,8 @@ from aiogram.types.input_file import FSInputFile
 from aiogram.types.photo_size import PhotoSize
 from aiogram_tests import MockedBot
 from aiogram_tests.handler import CallbackQueryHandler, MessageHandler
-from aiogram_tests.types.dataset import (
-    CALLBACK_QUERY,
-    MESSAGE,
-    MESSAGE_WITH_PHOTO,
-    PHOTO,
-)
+from aiogram_tests.types.dataset import (CALLBACK_QUERY, MESSAGE,
+                                         MESSAGE_WITH_PHOTO, PHOTO)
 
 from services.tg_bot.handlers import menu, predictions
 
@@ -199,11 +195,12 @@ async def test_cmd_start():
 @pytest.mark.asyncio
 async def test_predict_image():
     requester = MockedBot(request_handler=MessageHandler(predictions.predict_image))
-
-    calls = await requester.query(MESSAGE.as_object())
+    # photo_mock = [1, 2, 3]
+    # message_mock = mock.AsyncMock(photo=photo_mock)
+    calls = await requester.query(MESSAGE_WITH_PHOTO.as_object())
     answer_message = calls.send_message.fetchone().text
-    true_text = "*HOG SVM* считает, что этот знак 38 класса \(_Keep right_\)," \
-                "*SIFT SVM* считает, что этот знак 38 класса \(_Keep right_\)\."
+    true_text = ("*HOG SVM* считает, что этот знак 38 класса \(_Keep right_\),"
+                "*SIFT SVM* считает, что этот знак 38 класса \(_Keep right_\)\.")
 
     assert answer_message == true_text, "Recieved reply has invalid content."
 
