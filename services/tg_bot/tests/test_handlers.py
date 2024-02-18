@@ -199,8 +199,8 @@ async def test_predict_image():
     # message_mock = mock.AsyncMock(photo=photo_mock)
     calls = await requester.query(MESSAGE_WITH_PHOTO.as_object())
     answer_message = calls.send_message.fetchone().text
-    true_text = ("*HOG SVM* считает, что этот знак 38 класса \(_Keep right_\),"
-                "*SIFT SVM* считает, что этот знак 38 класса \(_Keep right_\)\.")
+    true_text = ("*HOG SVM* считает, что этот знак 38 класса \(_Keep right_\),\n"
+                 "*SIFT SVM* считает, что этот знак 38 класса \(_Keep right_\)\.")
 
     assert answer_message == true_text, "Recieved reply has invalid content."
 
