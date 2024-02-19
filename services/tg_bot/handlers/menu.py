@@ -30,12 +30,13 @@ async def cmd_start(message: types.Message):
     bt3 = types.KeyboardButton(text="Получить альбом")
     bt4 = types.KeyboardButton(text="Оценить бота")
     bt5 = types.KeyboardButton(text="Текущий рейтинг")
-    
+
     builder.row(bt1)
     builder.row(bt2, bt3)
     builder.row(bt4, bt5)
 
-    await message.answer("Что бы вы хотели узнать?", reply_markup=builder.as_markup(resize_keyboard=True))
+    await message.answer("Что бы вы хотели узнать?",
+                         reply_markup=builder.as_markup(resize_keyboard=True))
 
 
 # Хэндлер на команду информация
@@ -175,7 +176,8 @@ async def get_rating(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     rating_value = int(callback.data.split("_")[1])
 
-    async with aiofiles.open('services/tg_bot/handlers/rating.csv', 'a',  encoding="utf-8", newline="") as f:
+    async with aiofiles.open('services/tg_bot/handlers/rating.csv',
+                             'a',  encoding="utf-8", newline="") as f:
         writer = AsyncWriter(f)
         await writer.writerow([user_id, rating_value])
 
@@ -189,8 +191,9 @@ async def get_rating(callback: types.CallbackQuery):
 @router.message(F.text.lower() == "текущий рейтинг")
 async def current_rating(message: types.Message):
     rating_list = []
-    await message.reply(f"Считаю текущий рейтинг бота\.\.")
-    async with aiofiles.open('services/tg_bot/handlers/rating.csv', mode="r", encoding="utf-8", newline="") as f:
+    await message.reply("Считаю текущий рейтинг бота\.\.")
+    async with aiofiles.open('services/tg_bot/handlers/rating.csv',
+                             mode="r", encoding="utf-8", newline="") as f:
         async for row in AsyncReader(f):
             if row[1] != 'rating':
                 rating_list.append(int(row[1]))

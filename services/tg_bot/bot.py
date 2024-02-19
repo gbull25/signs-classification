@@ -17,7 +17,7 @@ async def main():
     # Добавляем Middleware на альбом изображений
     dp.message.middleware(AlbumMiddleware())
     # Добавляем роутеры
-    dp.include_routers(menu.router, predictions.router)    
+    dp.include_routers(menu.router, predictions.router)
 
     # Запуск процесса поллинга новых апдейтов
     await dp.start_polling(bot)

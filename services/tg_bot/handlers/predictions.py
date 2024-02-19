@@ -4,7 +4,6 @@ from aiogram import Bot, F, Router
 from aiogram.types import InputMediaPhoto, Message
 
 from services.model import preprocessing
-from services.tg_bot.config_reader import config
 
 router = Router()
 
@@ -31,14 +30,14 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
     data_class = {'hog_class': hog_pred, 'sift_class': sift_pred}
 
     # Возвращаем альбом для удобства чтения результатов классификации
-    await message.answer_media_group(media_group) 
+    await message.answer_media_group(media_group)
     # Возвращаем предсказания
     i = 0
     for hog, sift in zip(data_class['hog_class'], data_class['sift_class']):
         i += 1
         await message.reply(f'На фотографии номер {i}:\n'
-                           f'*HOG SVM* считает, что знак {hog[0]} класса \(_{hog[1]}_\),\n'
-                           f'*SIFT SVM* считает, что знак {sift[0]} класса \(_{sift[1]}_\)\.') 
+                            f'*HOG SVM* считает, что знак {hog[0]} класса \(_{hog[1]}_\),\n'
+                            f'*SIFT SVM* считает, что знак {sift[0]} класса \(_{sift[1]}_\)\.')
 
 
 # Хэндлер на одну фотографию
