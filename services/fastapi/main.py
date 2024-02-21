@@ -1,7 +1,7 @@
 from typing import Dict, List, Union
 
 import uvicorn
-from fastapi import FastAPI, File, Request, UploadFile
+from fastapi import FastAPI, File, UploadFile
 
 from services.model import preprocessing
 
@@ -33,7 +33,8 @@ def predict_one_sign_hog(file: bytes = File(...)) -> Dict[str, Union[int, str, f
 
 
 @app.post("/predict/signs_hog")
-def predict_many_signs_hog(files: List[UploadFile] = File(...)) -> Dict[str, Dict[str, Union[int, str, float, bool]]]:
+def predict_many_signs_hog(files: List[UploadFile] = File(...)) \
+        -> Dict[str, Dict[str, Union[int, str, float, bool]]]:
     """
     Predict traffic sign class on the image HOG features extraction (many images).
 
@@ -57,7 +58,7 @@ def predict_many_signs_hog(files: List[UploadFile] = File(...)) -> Dict[str, Dic
     im_num = 0
     for image in image_list:
         im_num += 1
-        data.update({str(im_num) + " image":preprocessing.predict_hog_image(image)})
+        data.update({str(im_num) + " image": preprocessing.predict_hog_image(image)})
 
     return data
 
@@ -79,7 +80,8 @@ def predict_one_sign_sift(file: bytes = File(...)) -> Dict[str, Union[int, str, 
 
 
 @app.post("/predict/signs_sift")
-def predict_many_signs_sift(files: List[UploadFile] = File(...)) -> Dict[str, Dict[str, Union[int, str, float, bool]]]:
+def predict_many_signs_sift(files: List[UploadFile] = File(...)) \
+        -> Dict[str, Dict[str, Union[int, str, float, bool]]]:
     """
     Predict traffic sign class on the image SIFT features extraction (many images).
 

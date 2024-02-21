@@ -17,7 +17,6 @@ router = Router()
 # Хэндлер на команду /start
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
-    #user_id = message.from_user.id
     user_full_name = message.from_user.full_name
     await message.answer(f'Привет, {user_full_name}\!\nЭтот бот умеет '
                          f'предсказывать класс немецких дорожных знаков\.\n'
@@ -31,12 +30,13 @@ async def cmd_start(message: types.Message):
     bt3 = types.KeyboardButton(text="Получить альбом")
     bt4 = types.KeyboardButton(text="Оценить бота")
     bt5 = types.KeyboardButton(text="Текущий рейтинг")
-    
+
     builder.row(bt1)
     builder.row(bt2, bt3)
     builder.row(bt4, bt5)
 
-    await message.answer("Что бы вы хотели узнать?", reply_markup=builder.as_markup(resize_keyboard=True))
+    await message.answer("Что бы вы хотели узнать?",
+                         reply_markup=builder.as_markup(resize_keyboard=True))
 
 
 # Хэндлер на команду информация
@@ -69,22 +69,22 @@ async def info(message: types.Message):
             "'Текущий рейтинг'\.\nСпасибо и хорошего вам дня\!")
     await message.answer(text)
 
+
 # Хэндлер на команду получить картинку
 @router.message(F.text.lower() == "получить картинку")
 @router.message(Command('image'))
 async def upload_photo(message: Message):
-    #file_ids = []
     path = "services/tg_bot/sample_images/**"
     filename = random.choice(glob.glob(path))
     # Отправка файла из файловой системы
     image_from_pc = FSInputFile(path=filename)
-    result = await message.answer_photo(
+    await message.answer_photo(
         image_from_pc,
         caption="Прошу, ваша тестовая картинка готова\!"
     )
 
 
-# Хэндлер на команду получить картинку
+# Хэндлер на команду получить альбом
 @router.message(F.text.lower() == "получить альбом")
 @router.message(Command('images'))
 async def upload_photos(message: Message):
@@ -176,7 +176,8 @@ async def get_rating(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     rating_value = int(callback.data.split("_")[1])
 
-    async with aiofiles.open('services/tg_bot/handlers/rating.csv', 'a',  encoding="utf-8", newline="") as f:
+    async with aiofiles.open('services/tg_bot/handlers/rating.csv',
+                             'a',  encoding="utf-8", newline="") as f:
         writer = AsyncWriter(f)
         await writer.writerow([user_id, rating_value])
 
@@ -188,10 +189,11 @@ async def get_rating(callback: types.CallbackQuery):
 
 # Хэндлер на команду текущий рейтинг
 @router.message(F.text.lower() == "текущий рейтинг")
-async def info(message: types.Message):
+async def current_rating(message: types.Message):
     rating_list = []
-    await message.reply(f"Считаю текущий рейтинг бота\.\.")
-    async with aiofiles.open('services/tg_bot/handlers/rating.csv', mode="r", encoding="utf-8", newline="") as f:
+    await message.reply("Считаю текущий рейтинг бота\.\.")
+    async with aiofiles.open('services/tg_bot/handlers/rating.csv',
+                             mode="r", encoding="utf-8", newline="") as f:
         async for row in AsyncReader(f):
             if row[1] != 'rating':
                 rating_list.append(int(row[1]))

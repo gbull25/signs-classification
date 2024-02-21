@@ -4,7 +4,7 @@ import logging
 from aiogram import Bot, Dispatcher
 from config_reader import config
 from handlers import menu, predictions
-from middleware import Album_Middleware
+from middleware import AlbumMiddleware
 
 
 async def main():
@@ -15,9 +15,9 @@ async def main():
     # Объект диспетчера
     dp = Dispatcher()
     # Добавляем Middleware на альбом изображений
-    dp.message.middleware(Album_Middleware())
+    dp.message.middleware(AlbumMiddleware())
     # Добавляем роутеры
-    dp.include_routers(menu.router, predictions.router)    
+    dp.include_routers(menu.router, predictions.router)
 
     # Запуск процесса поллинга новых апдейтов
     await dp.start_polling(bot)

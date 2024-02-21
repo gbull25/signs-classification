@@ -1,7 +1,5 @@
 import io
 import logging
-import lzma
-import pickle
 from typing import Dict, Union
 
 import cv2
@@ -100,11 +98,11 @@ def predict_hog_image(binaryimg: bytes) -> Dict[str, Union[int, str, float, bool
     im_gray = np.array([cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)]).astype(float)
 
     # computes HOG features of input images
-    hog_output = [hog(img, pixels_per_cell = (2, 2), visualize = True) for img in im_gray]
+    hog_output = [hog(img, pixels_per_cell=(2, 2), visualize=True) for img in im_gray]
     data_hog = [hog_img for out, hog_img in hog_output]
 
     # resize the image
-    size = (50,50)
+    size = (50, 50)
     im_resized = np.array([cv2.resize(img, size) for img in data_hog], dtype=object).astype(float)
 
     # image flattening, reshaping the data to the (samples, feature) matrix format
@@ -115,12 +113,11 @@ def predict_hog_image(binaryimg: bytes) -> Dict[str, Union[int, str, float, bool
     pred_class = int(prediction.tolist()[0])
     confidence = HOG_MODEL['best_model'].predict_proba(data_reshaped)[0][pred_class-1]
 
-
     data.update(
         {
             "sign_class": pred_class,
             "sign_description": SIGNS_DESC[pred_class],
-            "confidence": float(f"{confidence.tolist():.4f}"), 
+            "confidence": float(f"{confidence.tolist():.4f}"),
             "success": True
         }
     )
@@ -144,16 +141,16 @@ def preprocess_sift_image(img: np.array, img_shape: tuple = (32, 32)) -> np.arra
     ycrcb_img[:, :, 0] = cv2.equalizeHist(ycrcb_img[:, :, 0])
     bgr_img = cv2.cvtColor(ycrcb_img, cv2.COLOR_YCrCb2BGR)
     gray_img = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
-    
+
     # Normalize image
     normalized_gray_img = np.zeros(gray_img.shape)
     normalized_gray_img = cv2.normalize(gray_img,  normalized_gray_img, 0, 255, cv2.NORM_MINMAX)
 
     # Resize image to img_shape. Use different interpolation whether we shrink or enlarging the image.
     if normalized_gray_img.size >= np.prod(np.array(img_shape)):
-        normalized_gray_img = cv2.resize(normalized_gray_img, img_shape, interpolation = cv2.INTER_AREA)
+        normalized_gray_img = cv2.resize(normalized_gray_img, img_shape, interpolation=cv2.INTER_AREA)
     else:
-        normalized_gray_img = cv2.resize(normalized_gray_img, img_shape, interpolation = cv2.INTER_CUBIC)
+        normalized_gray_img = cv2.resize(normalized_gray_img, img_shape, interpolation=cv2.INTER_CUBIC)
 
     return normalized_gray_img
 
@@ -172,7 +169,7 @@ def predict_sift_image(binaryimg: bytes) -> Dict[str, Union[int, str, float, boo
     data = {"success": False}
     if binaryimg is None:
         return data
-    
+
     # Initialize feature vector
     features = np.zeros(645)
     # Read image
@@ -185,7 +182,7 @@ def predict_sift_image(binaryimg: bytes) -> Dict[str, Union[int, str, float, boo
 
     try:
         closest_idx = KMEANS_MODEL.predict(des)
-    except ValueError as ve:
+    except ValueError:
         # Skipping when no descriptors are found
         pass
 
@@ -201,7 +198,7 @@ def predict_sift_image(binaryimg: bytes) -> Dict[str, Union[int, str, float, boo
         {
             "sign_class": pred_class,
             "sign_description": SIGNS_DESC[pred_class],
-            "confidence": 100.0, 
+            "confidence": 100.0,
             "success": True
         }
     )
