@@ -19,10 +19,9 @@ from aiogram_tests.types.dataset import CALLBACK_QUERY, MESSAGE, MESSAGE_WITH_PH
 from services.tg_bot.handlers import menu, predictions
 
 RATING_FILE_PATH = pathlib.Path("services/tg_bot/handlers/rating.csv")
-# RUN python -m pytest ./services/tg_bot
 
 
-async def mock_download(*args, **kwargs):
+async def mock_download(*_args, **_kwargs):
     with open('./services/tg_bot/sample_images/01576.png', 'rb') as f:
         io = BytesIO(f.read())
     return io
@@ -200,12 +199,10 @@ async def test_cmd_start():
 @pytest.mark.asyncio
 async def test_predict_image():
     requester = MockedBot(request_handler=MessageHandler(predictions.predict_image))
-    # photo_mock = [1, 2, 3]
-    # message_mock = mock.AsyncMock(photo=photo_mock)
     calls = await requester.query(MESSAGE_WITH_PHOTO.as_object())
     answer_message = calls.send_message.fetchone().text
-    true_text = ("*HOG SVM* считает, что этот знак 38 класса \\(_Keep right_\),\n"
-                 "*SIFT SVM* считает, что этот знак 38 класса \\(_Keep right_\)\.")
+    true_text = ("*HOG SVM* считает, что этот знак 38 класса \\(_Keep right_\\),\n"
+                 "*SIFT SVM* считает, что этот знак 38 класса \\(_Keep right_\\)\.")
 
     assert answer_message == true_text, "Recieved reply has invalid content."
 
@@ -252,5 +249,5 @@ async def test_info():
     # Fifth message
     answer_message = calls.send_message.fetchall()[4].text
     true_text = ("Чтобы получить теущий рейтинг бота, нажмите на кнопку "
-                 "'Текущий рейтинг'\\.\nСпасибо и хорошего вам дня\!")
+                 "'Текущий рейтинг'\\.\nСпасибо и хорошего вам дня\\!")
     assert answer_message == true_text, "Recieved reply has invalid content."
