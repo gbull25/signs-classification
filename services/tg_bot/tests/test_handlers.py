@@ -14,8 +14,7 @@ from aiogram.filters import Command
 from aiogram.types.input_file import FSInputFile
 from aiogram_tests import MockedBot
 from aiogram_tests.handler import CallbackQueryHandler, MessageHandler
-from aiogram_tests.types.dataset import (CALLBACK_QUERY, MESSAGE,
-                                         MESSAGE_WITH_PHOTO)
+from aiogram_tests.types.dataset import CALLBACK_QUERY, MESSAGE, MESSAGE_WITH_PHOTO
 
 from services.tg_bot.handlers import menu, predictions
 
@@ -33,6 +32,18 @@ async def mock_download(*args, **kwargs):
 async def current_rating():
     rating_df = pd.read_csv(RATING_FILE_PATH)
     return int(np.floor(rating_df['rating'].mean()))
+
+
+@pytest.fixture
+async def request_rating_1():
+    rating_df = pd.read_csv(RATING_FILE_PATH)
+    return rating_df['rating'].mean()
+
+
+@pytest.fixture
+async def request_rating_2():
+    rating_df = pd.read_csv(RATING_FILE_PATH)
+    return rating_df['rating'].mean()
 
 
 @pytest.mark.asyncio
@@ -58,7 +69,7 @@ async def test_upload_photo():
     assert isinstance(answer_message.photo, FSInputFile), (f"Received reply's 'photo' "
                                                            f"attribute content of a wrong"
                                                            f" type: {type(answer_message.photo)}.")
-    assert answer_message.caption == "Прошу, ваша тестовая картинка готова\!", \
+    assert answer_message.caption == r"Прошу, ваша тестовая картинка готова\!", \
         "Received reply's 'caption' attribute  has invalid content."
 
 
@@ -105,7 +116,7 @@ async def test_send_album_callback():
            "Received reply's 'media' attribute's elements of a wrong type."
     assert all([isinstance(x["media"], FSInputFile) for x in answer_message.media]), \
            "Received reply's 'media' attribute contains media of a wrong type."
-    assert answer_message.media[0]["caption"] == f"Прошу, ваши {n_photos} тестовых картинок готовы\\!", \
+    assert answer_message.media[0]["caption"] == r"Прошу, ваши %s тестовых картинок готовы\!" % n_photos, \
         "Received reply has wrong caption."
 
 
@@ -124,18 +135,6 @@ async def test_cmd_rating():
          f"{len(answer_message.reply_markup.get('inline_keyboard')[0])} != 5.")
     assert answer_message.text == "Пожалуйста, оцените работу бота:", \
         "Received reply has invalid content."
-
-
-@pytest.fixture
-async def request_rating_1():
-    rating_df = pd.read_csv(RATING_FILE_PATH)
-    return rating_df['rating'].mean()
-
-
-@pytest.fixture
-async def request_rating_2():
-    rating_df = pd.read_csv(RATING_FILE_PATH)
-    return rating_df['rating'].mean()
 
 
 @pytest.mark.asyncio
@@ -185,10 +184,10 @@ async def test_cmd_start():
     # First message
     user_full_name = "FirstName LastName"
     answer_message = calls.send_message.fetchall()[0].text
-    true_text = (f'Привет, {user_full_name}\!\nЭтот бот умеет '
-                 f'предсказывать класс немецких дорожных знаков\.\n'
+    true_text = (f'Привет, {user_full_name}\\!\nЭтот бот умеет '
+                 f'предсказывать класс немецких дорожных знаков\\.\n'
                  f'Загрузи картинку со знаком или даже несколько, '
-                 f'и бот попробует угадать, какой класс знака на них изображен\.')
+                 f'и бот попробует угадать, какой класс знака на них изображен\\.')
     assert answer_message == true_text, "Recieved reply has invalid content."
 
     # Second message
@@ -205,8 +204,8 @@ async def test_predict_image():
     # message_mock = mock.AsyncMock(photo=photo_mock)
     calls = await requester.query(MESSAGE_WITH_PHOTO.as_object())
     answer_message = calls.send_message.fetchone().text
-    true_text = ("*HOG SVM* считает, что этот знак 38 класса \(_Keep right_\),\n"
-                 "*SIFT SVM* считает, что этот знак 38 класса \(_Keep right_\)\.")
+    true_text = ("*HOG SVM* считает, что этот знак 38 класса \\(_Keep right_\),\n"
+                 "*SIFT SVM* считает, что этот знак 38 класса \\(_Keep right_\)\.")
 
     assert answer_message == true_text, "Recieved reply has invalid content."
 
@@ -218,19 +217,19 @@ async def test_info():
 
     # First message
     answer_message = calls.send_message.fetchall()[0].text
-    true_text = ("Этот телеграм\-бот является частью студенческого "
-                 "[проекта\.](https://github.com/gbull25/signs-classification)\n"
+    true_text = ("Этот телеграм\\-бот является частью студенческого "
+                 "[проекта\\.](https://github.com/gbull25/signs-classification)\n"
                  "Бот предсказывает класс немецких знаков по фотографиям, "
                  "используя для этого две ML модели семейства SVM, обученные на "
-                 "SIFT и HOG признаках\.")
+                 "SIFT и HOG признаках\\.")
     assert answer_message == true_text, "Recieved reply has invalid content."
 
     # Second message
     answer_message = calls.send_message.fetchall()[1].text
     true_text = ("Чтобы получить тестовую фотографию, нажмите на "
-                 "кнопку 'Получить картинку'\.\nОтправьте фотографию "
+                 "кнопку 'Получить картинку'\\.\nОтправьте фотографию "
                  "или несколько фотографий со сжатием, чтобы получить "
-                 "предсказание класса знака обеими моделями для каждой из них\.")
+                 "предсказание класса знака обеими моделями для каждой из них\\.")
     assert answer_message == true_text, "Recieved reply has invalid content."
 
     # Third message
@@ -238,20 +237,20 @@ async def test_info():
     true_text = ("Если вы пользуетесь ботом с мобильного устройства, "
                  "рекомендуется пересылать боту сообщения с полученными тестовыми картинками, "
                  "без предварительного сохранения фотографий на внутреннюю память телефона, "
-                 "во избежание дополнительного сжатия\.")
+                 "во избежание дополнительного сжатия\\.")
     assert answer_message == true_text, "Recieved reply has invalid content."
 
     # Fourth message
     answer_message = calls.send_message.fetchall()[3].text
     true_text = ("Если вы хотите оценить бота, нажмите на кнопку "
-                 "'Оценить бота'\.\nУчтите, что на текущий момент "
+                 "'Оценить бота'\\.\nУчтите, что на текущий момент "
                  "каждый пользователь может оставлять неограниченное "
-                 "количество оценок, сделано это с целью бесстыдной накрутки рейтинга\. "
-                 "В будущем, конечно, это будет изменено\.")
+                 "количество оценок, сделано это с целью бесстыдной накрутки рейтинга\\. "
+                 "В будущем, конечно, это будет изменено\\.")
     assert answer_message == true_text, "Recieved reply has invalid content."
 
     # Fifth message
     answer_message = calls.send_message.fetchall()[4].text
     true_text = ("Чтобы получить теущий рейтинг бота, нажмите на кнопку "
-                 "'Текущий рейтинг'\.\nСпасибо и хорошего вам дня\!")
+                 "'Текущий рейтинг'\\.\nСпасибо и хорошего вам дня\!")
     assert answer_message == true_text, "Recieved reply has invalid content."
