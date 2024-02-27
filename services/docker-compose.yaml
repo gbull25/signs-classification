@@ -1,0 +1,10 @@
+services:
+  sign_classifier:
+    build: sign_classifier
+    ports: 
+      - "5000:80"
+    volumes:
+    - ./sign_classifier/models:/models
+     
+  bot:
+    build: tg_bot

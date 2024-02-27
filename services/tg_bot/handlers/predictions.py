@@ -2,11 +2,13 @@ from io import BytesIO
 
 from aiogram import Bot, F, Router
 from aiogram.types import InputMediaPhoto, Message
+import requests
 
-from services.model import preprocessing
+#from services.model import preprocessing
 
 router = Router()
 
+#_APP_ADDRESS = "http://app:5001/predict"
 
 # Хэндлер на альбом фотографий
 @router.message(F.media_group_id, F.content_type.in_({'photo'}))
@@ -22,9 +24,13 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
             io = BytesIO()
             await bot.download(msg.photo[-1], destination=io)
             im = io.getvalue()
-            data_hog = preprocessing.predict_hog_image(im)
+
+            #data_hog = preprocessing.predict_hog_image(im)
+            data_hog = requests.post("http://app:5001/predict_many_signs_hog", files=im)
             hog_pred.append((data_hog['sign_class'], data_hog['sign_description']))
-            data_sift = preprocessing.predict_sift_image(im)
+
+            #data_sift = preprocessing.predict_sift_image(im)
+            data_sift = requests.post("http://app:5001/predict_many_signs_sift", files=im)
             sift_pred.append((data_sift['sign_class'], data_sift['sign_description']))
 
     data_class = {'hog_class': hog_pred, 'sift_class': sift_pred}
@@ -46,8 +52,8 @@ async def predict_image(message: Message, bot: Bot):
     io = BytesIO()
     io = await bot.download(message.photo[-1], destination=io)
     im = io.getvalue()
-    data_hog = preprocessing.predict_hog_image(im)
-    data_sift = preprocessing.predict_sift_image(im)
+    data_hog = requests.post("http://app:5001/predict_one_sign_hog", files=im)
+    data_sift = requests.post("http://app:5001/predict_one_sign_sift", files=im)
     await message.reply(f'*HOG SVM* считает, что этот знак '
                         f'{data_hog["sign_class"]} класса \(_{data_hog["sign_description"]}_\),\n'
                         f'*SIFT SVM* считает, что этот знак '
