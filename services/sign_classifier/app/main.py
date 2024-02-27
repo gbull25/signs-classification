@@ -16,6 +16,53 @@ app = FastAPI(
     )
 
 
+@app.post("/predict/sign_cnn")
+def predict_one_sign_cnn(file: bytes = File(...)) -> Dict[str, Union[int, str, bool]]:
+    """
+    Predict traffic sign class with CNN model (one image).
+
+    Args:
+        - file (bytes): image represented by bytes.
+
+    Returns:
+        - data (dict): dict with info about image processing and sign class.
+    """
+    data = classify.predict_cnn_image(file)
+
+    return data
+
+
+@app.post("/predict/signs_cnn")
+def predict_many_signs_cnn(files: List[UploadFile] = File(...)) \
+        -> Dict[str, Dict[str, Union[int, str, bool]]]:
+    """
+    Predict traffic sign class with CNN model (many images).
+
+    Args:
+        - files (list): list with images represented by bytes.
+
+    Returns:
+        - data (dict): dict with info about images processing and signs class.
+    """
+    data = {}
+    image_list = []
+
+    for file in files:
+        try:
+            image_list.append(file.file.read())
+        except Exception:
+            return {"message": "There was an error uploading the file(s)"}
+        finally:
+            file.file.close()
+
+    im_num = 0
+    for image in image_list:
+        im_num += 1
+        data.update({str(im_num) + " image": classify.predict_cnn_image(image)})
+
+    return data
+
+
 @app.post("/predict/sign_hog")
 def predict_one_sign_hog(file: bytes = File(...)) -> Dict[str, Union[int, str, float, bool]]:
     """

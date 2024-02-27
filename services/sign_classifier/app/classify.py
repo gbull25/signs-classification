@@ -7,11 +7,29 @@ import joblib
 import numpy as np
 from skimage.feature import hog
 
-from . import settings
+import PIL
+import torch
+#import torch.nn as nn
+from torchvision.transforms.v2 import Compose, ToImage, ToDtype, Resize, ToTensor
 
+
+from . import settings
+from .cnn_model import GTSRB_MODEL
+
+# first iteration models
 HOG_MODEL = joblib.load(settings.hog_model_path)
 KMEANS_MODEL = joblib.load(settings.kmeans_model_path)
 SIFT_MODEL = joblib.load(settings.sift_model_path)
+
+# second iteration model
+EPOCHS = 20
+LEARNING_RATE = 0.0008
+INPUT_DIM = 3*50*50
+OUTPUT_DIM = 43
+CNN_MODEL = GTSRB_MODEL(INPUT_DIM, OUTPUT_DIM)
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+CNN_MODEL.load_state_dict(torch.load(settings.cnn_model_path, map_location=device))
+
 SIGNS_DESC = {
     0: 'Speed Limit 20 kmph',
     1: 'Speed Limit 30 kmph',
@@ -72,10 +90,11 @@ def read_cv2_image(binaryimg: bytes) -> np.array:
     stream = io.BytesIO(binaryimg)
 
     image = np.asarray(bytearray(stream.read()), dtype="uint8")
-    image = cv2.imdecode(image, cv2.IMREAD_COLOR)
-    logging.debug(f'Image resolution: {image.shape}.')
+    #image = cv2.imdecode(image, cv2.IMREAD_ANYCOLOR)
+    image = PIL.Image.open(io.BytesIO(image)).convert('RGB')
+    #logging.debug(f'Image resolution: {image.shape}.')
 
-    return image
+    return np.array(image)
 
 
 def predict_hog_image(binaryimg: bytes) -> Dict[str, Union[int, str, float, bool]]:
@@ -204,5 +223,60 @@ def predict_sift_image(binaryimg: bytes) -> Dict[str, Union[int, str, float, boo
             "success": True
         }
     )
+
+    return data
+
+
+def predict_cnn_image(binaryimg: bytes):
+    """
+    Load and preprocess image containing a traffic sign, predict what that sign
+    using CNN model.
+
+    Args:
+        - binaryimg (bytes): bytes representing an image.
+
+    Returns:
+        - data (dict): dict with info about image processing.
+    """
+    data = {"success": False}
+    if binaryimg is None:
+        return data
+
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # model = CNN_MODEL.eval().to(device)
+
+    model = CNN_MODEL.eval()
+
+    # convert the binary image to image
+    image = read_cv2_image(binaryimg)
+
+    # convert to tensor, normalize,
+    # swap axes to [channels, H, W] format
+    image = torch.from_numpy(image) / 255
+    image = torch.swapaxes(image, 0, 2)
+    image = torch.swapaxes(image, 1, 2)
+
+
+    transforms = Compose(
+        [
+            Resize([50, 50]),
+            ToTensor()
+        ]
+    )
+
+    image = transforms(image)
+
+    # prediction
+    with torch.no_grad() :
+        prediction = model.forward(image[None, :, :, :])
+        _, pred = torch.max(prediction, 1)
+
+    data.update(
+            {
+                "sign_class": pred.item(),
+                "sign_description": SIGNS_DESC[pred.item()],
+                "success": True
+            }
+        )
 
     return data

@@ -46,8 +46,7 @@ share/python-wheels/
 *.egg
 
 # Models
-SIFT_jupyter/kmeans.gz
-SIFT_jupyter/sift_svm.gz
-**/kmeans.gz
-**/sift_svm.gz
-**/lzma_hog_proba.xz
+**kmeans.gz
+**sift_svm.gz
+**lzma_hog_proba.xz
+**cnn_torch.pt
