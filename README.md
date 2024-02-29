@@ -4,63 +4,52 @@
 Ссылка на Яндекс.Диск с данными - [тут](https://disk.yandex.ru/d/Lt3161xIH5m0MQ).
 
 
-Схема репозитория (WIP)
-------------
-    ├── .gitignore
-    │
-    ├── .gitattributes
-    │
-    ├── LICENSE
-    │
-    ├── experiments                  <- experiment .ipynb files
-    │
-    ├── jupyter                      <- main .ipynb files
-    │
-    ├── readme_data                  <- pictures and gifs for README.md 
-    │
-    ├── requirements.txt             <- main requirements for project
-    │
-    ├── render_requirements.txt      <- requirements for render.com (unused)
-    │
-    ├── setup.py                     <- makes project pip installable (pip install -e .)
-    │                                   so src can be imported
-    │
-    └── services                     <- source code for services used in this project
-       ├── __init__.py               <- makes src a Python module
-       │
-       ├── fastapi                   <- FastAPI service
-       │   │
-       │   ├── __init__.py           <- makes src a Python module
-       │   └── main.py               <- main fastapi file
-       │
-       ├── models                    <- Directory with models and 
-       │   │                            data processing files
-       │   │
-       │   ├── __init__.py           <- makes src a Python module
-       │   └── preprocessing.py      <- functions to preprocess data and use trained
-       │                                models to make predictions 
-       └── tg_bot 
-           │
-           ├──__init__.py 
-           │
-           ├── handlers
-           │    │                       
-           │    ├── __init__.py      <- Makes src a Python module
-           │    │
-           │    ├── menu.py          <- buttons and text handlers
-           │    │
-           │    ├── predictions.py   <- pictures and albums handlers
-           │    │
-           │    └── retaing.csv      <- csv file with bot rating
-           │
-           ├── sample_images         <- firectory with sample images for bot
-           │
-           ├── bot.py                <- main function of telegram bot
-           │
-           ├── middleweare.py        <- middleware fucntions
-           │
-           └── config_reader.py      <- reader of .env file
-
+.
+├── jupyter                      <- main .ipynb files
+│   ├── CNN_exp.ipynb
+│   ├── EDA.ipynb
+│   ├── HOG.ipynb
+│   └── SIFT.ipynb
+├── LICENSE
+├── readme_data
+│   ├── fastapi.gif
+│   └── tg_bot.gif
+├── README.md
+├── requirements.txt
+├── services
+│   ├── docker-compose.yaml
+│   ├── sign_classifier
+│   │   ├── app                  <- FastAPI service
+│   │   │   ├── classify.py
+│   │   │   ├── cnn_model.py
+│   │   │   ├── log_conf.yaml
+│   │   │   ├── main.py
+│   │   │   └── settings.py
+│   │   ├── dockerfile
+│   │   ├── models
+│   │   │   ├── cnn_torch.pt
+│   │   │   ├── kmeans.gz
+│   │   │   ├── lzma_hog_proba.xz
+│   │   │   └── sift_svm.gz
+│   │   └── requirements.txt
+│   └── tg_bot                   <- telegram bot service
+│       ├── bot.py
+│       ├── config_reader.py
+│       ├── dockerfile
+│       ├── handlers             <- event handlers
+│       │   ├── __init__.py
+│       │   ├── menu.py
+│       │   ├── predictions.py
+│       │   └── rating.csv
+│       ├── middleware.py        <- middleware fucntions
+│       ├── requirements.txt
+│       ├── sample_images        <- directory with sample images for bot
+│       └── tests                <- unit tests for telegram bot
+│           ├── htmlcov          <- directory with html coverage report
+│           ├── __init__.py
+│           └── test_handlers.py
+├── setup.cfg
+└── setup.py
 
 ## Задачи проекта
 - Создание и обучение ML модели классификации дорожных знаков.
