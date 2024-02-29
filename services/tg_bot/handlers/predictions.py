@@ -65,7 +65,7 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
         i += 1
         await message.reply(f'На фотографии номер {i}:\n'
                             f'*HOG SVM* считает, что знак {hog[0]} класса \(_{hog[1]}_\),\n'
-                            f'*SIFT SVM* считает, что знак {sift[0]} класса \(_{sift[1]}_\)\n'
+                            f'*SIFT SVM* считает, что знак {sift[0]} класса \(_{sift[1]}_\),\n'
                             f'*CNN* считает, что знак {cnn[0]} класса \(_{cnn[1]}_\)\.')
 
 
@@ -81,6 +81,6 @@ async def predict_image(message: Message, bot: Bot):
     await message.reply(f'*HOG SVM* считает, что этот знак '
                         f'{data_hog["sign_class"]} класса \(_{data_hog["sign_description"]}_\),\n'
                         f'*SIFT SVM* считает, что этот знак '
-                        f'{data_sift["sign_class"]} класса \(_{data_sift["sign_description"]}_\)\.'
+                        f'{data_sift["sign_class"]} класса \(_{data_sift["sign_description"]}_\),\n'
                         f'*CNN* считает, что этот знак '
                         f'{data_cnn["sign_class"]} класса \(_{data_cnn["sign_description"]}_\)\.')

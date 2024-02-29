@@ -11,10 +11,14 @@
 # Dataset folder
 data/
 
-# models 
+# first iteration code
 
+experiments/
+services/fastapi/
+services/model/
 **data_short.pickle
 **hog_mid_proba.pickle
+render_requirements.txt
 
 # etc_stuff
 
