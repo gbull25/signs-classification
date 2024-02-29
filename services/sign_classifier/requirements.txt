@@ -13,3 +13,4 @@ daal==2024.0.1
 daal4py==2024.0.1
 torch==2.1.0
 torchvision==0.16.0
+pyYAML

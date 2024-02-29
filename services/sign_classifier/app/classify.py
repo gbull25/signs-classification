@@ -5,30 +5,33 @@ from typing import Dict, Union
 import cv2
 import joblib
 import numpy as np
-from skimage.feature import hog
-
 import PIL
 import torch
-#import torch.nn as nn
-from torchvision.transforms.v2 import Compose, ToImage, ToDtype, Resize, ToTensor
+from skimage.feature import hog
 
+#import torch.nn as nn
+from torchvision.transforms.v2 import Compose, Resize, ToDtype, ToImage, ToTensor
 
 from . import settings
 from .cnn_model import GTSRB_MODEL
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s: [%(levelname)s] %(message)s')
+
 # first iteration models
+logging.info("Loading ML models...")
 HOG_MODEL = joblib.load(settings.hog_model_path)
 KMEANS_MODEL = joblib.load(settings.kmeans_model_path)
 SIFT_MODEL = joblib.load(settings.sift_model_path)
+logging.info("Successfully loaded ML models.")
 
 # second iteration model
-EPOCHS = 20
-LEARNING_RATE = 0.0008
+logging.info("Loading CNN model...")
 INPUT_DIM = 3*50*50
 OUTPUT_DIM = 43
 CNN_MODEL = GTSRB_MODEL(INPUT_DIM, OUTPUT_DIM)
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-CNN_MODEL.load_state_dict(torch.load(settings.cnn_model_path, map_location=device))
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+CNN_MODEL.load_state_dict(torch.load(settings.cnn_model_path, map_location=DEVICE))
+logging.info("Successfully loaded CNN model.")
 
 SIGNS_DESC = {
     0: 'Speed Limit 20 kmph',
@@ -92,7 +95,7 @@ def read_cv2_image(binaryimg: bytes) -> np.array:
     image = np.asarray(bytearray(stream.read()), dtype="uint8")
     #image = cv2.imdecode(image, cv2.IMREAD_ANYCOLOR)
     image = PIL.Image.open(io.BytesIO(image)).convert('RGB')
-    #logging.debug(f'Image resolution: {image.shape}.')
+    # logging.debug(f'Image resolution: {image.shape}.')
 
     return np.array(image)
 

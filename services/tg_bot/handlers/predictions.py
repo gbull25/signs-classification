@@ -1,13 +1,16 @@
+import logging
 from io import BytesIO
 
 # import aiohttp
 import requests
 from aiogram import Bot, F, Router
 from aiogram.types import InputMediaPhoto, Message
+from requests.exceptions import ConnectionError
 
 #from services.model import preprocessing
 
 router = Router()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s: [%(levelname)s] %(message)s')
 
 
 # Хэндлер на альбом фотографий
@@ -37,17 +40,25 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
             #    filename=f'file_{i}',
             #    content_type='image/png')
 
-            # HOG
-            data_hog = requests.post("http://sign_classifier:80/predict/sign_hog", files={'file': im}).json()
-            hog_pred.append((data_hog['sign_class'], data_hog['sign_description']))
+            try:
 
-            # SIFT
-            data_sift = requests.post("http://sign_classifier:80/predict/sign_sift", files={'file': im}).json()
-            sift_pred.append((data_sift['sign_class'], data_sift['sign_description']))
+                # HOG
+                data_hog = requests.post("http://sign_classifier:80/predict/sign_hog", files={'file': im}).json()
+                hog_pred.append((data_hog['sign_class'], data_hog['sign_description']))
 
-            # CNN
-            data_cnn = requests.post("http://sign_classifier:80/predict/sign_cnn", files={'file': im}).json()
-            cnn_pred.append((data_cnn['sign_class'], data_cnn['sign_description']))
+                # SIFT
+                data_sift = requests.post("http://sign_classifier:80/predict/sign_sift", files={'file': im}).json()
+                sift_pred.append((data_sift['sign_class'], data_sift['sign_description']))
+
+                # CNN
+                data_cnn = requests.post("http://sign_classifier:80/predict/sign_cnn", files={'file': im}).json()
+                cnn_pred.append((data_cnn['sign_class'], data_cnn['sign_description']))
+
+            except ConnectionError as ce:
+
+                logging.error(f"Connection refused error: {ce}")
+                await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
+                return
 
     # aiohttp WIP
     # async with aiohttp.ClientSession() as session:
@@ -75,12 +86,22 @@ async def predict_image(message: Message, bot: Bot):
     io = BytesIO()
     io = await bot.download(message.photo[-1], destination=io)
     im = io.getvalue()
-    data_hog = requests.post("http://sign_classifier:80/predict/sign_hog", files={'file': im}).json()
-    data_sift = requests.post("http://sign_classifier:80/predict/sign_sift", files={'file': im}).json()
-    data_cnn = requests.post("http://sign_classifier:80/predict/sign_cnn", files={'file': im}).json()
+
+    try:
+
+        data_hog = requests.post("http://sign_classifier:80/predict/sign_hog", files={'file': im}).json()
+        data_sift = requests.post("http://sign_classifier:80/predict/sign_sift", files={'file': im}).json()
+        data_cnn = requests.post("http://sign_classifier:80/predict/sign_cnn", files={'file': im}).json()
+
+    except ConnectionError as ce:
+
+        logging.error(f"Connection refused error: {ce}")
+        await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
+        return
+
     await message.reply(f'*HOG SVM* считает, что этот знак '
-                        f'{data_hog["sign_class"]} класса \(_{data_hog["sign_description"]}_\),\n'
-                        f'*SIFT SVM* считает, что этот знак '
-                        f'{data_sift["sign_class"]} класса \(_{data_sift["sign_description"]}_\),\n'
-                        f'*CNN* считает, что этот знак '
-                        f'{data_cnn["sign_class"]} класса \(_{data_cnn["sign_description"]}_\)\.')
+            f'{data_hog["sign_class"]} класса \(_{data_hog["sign_description"]}_\),\n'
+            f'*SIFT SVM* считает, что этот знак '
+            f'{data_sift["sign_class"]} класса \(_{data_sift["sign_description"]}_\),\n'
+            f'*CNN* считает, что этот знак '
+            f'{data_cnn["sign_class"]} класса \(_{data_cnn["sign_description"]}_\)\.')
