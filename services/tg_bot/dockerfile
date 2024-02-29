@@ -5,6 +5,6 @@ RUN sudo rm -rf /var/lib/apt/lists/*
 COPY requirements.txt requirements.txt
 RUN pip install --upgrade pip \
     -r requirements.txt
-COPY . .
+# COPY . .
 CMD ["python", "bot.py"]
 

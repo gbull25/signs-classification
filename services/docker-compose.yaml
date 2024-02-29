@@ -2,9 +2,14 @@ services:
   sign_classifier:
     build: sign_classifier
     ports: 
-      - "5000:80"
+      - "80:80"
     volumes:
     - ./sign_classifier/models:/models
+    - ./sign_classifier/app:/code/app
      
-  bot:
+  tg_bot:
     build: tg_bot
+    depends_on:
+      - sign_classifier
+    volumes:
+    - ./tg_bot:/bot
