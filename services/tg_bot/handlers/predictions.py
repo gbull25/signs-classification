@@ -7,8 +7,6 @@ from aiogram import Bot, F, Router
 from aiogram.types import InputMediaPhoto, Message
 from requests.exceptions import ConnectionError
 
-#from services.model import preprocessing
-
 router = Router()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s: [%(levelname)s] %(message)s')
 
@@ -33,7 +31,7 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
             io = BytesIO()
             await bot.download(msg.photo[-1], destination=io)
             im = io.getvalue()
-            
+
             # aiohttp WIP
             # request_data.add_field('file',
             #    im,
@@ -100,8 +98,8 @@ async def predict_image(message: Message, bot: Bot):
         return
 
     await message.reply(f'*HOG SVM* считает, что этот знак '
-            f'{data_hog["sign_class"]} класса \(_{data_hog["sign_description"]}_\),\n'
-            f'*SIFT SVM* считает, что этот знак '
-            f'{data_sift["sign_class"]} класса \(_{data_sift["sign_description"]}_\),\n'
-            f'*CNN* считает, что этот знак '
-            f'{data_cnn["sign_class"]} класса \(_{data_cnn["sign_description"]}_\)\.')
+                        f'{data_hog["sign_class"]} класса \(_{data_hog["sign_description"]}_\),\n'
+                        f'*SIFT SVM* считает, что этот знак '
+                        f'{data_sift["sign_class"]} класса \(_{data_sift["sign_description"]}_\),\n'
+                        f'*CNN* считает, что этот знак '
+                        f'{data_cnn["sign_class"]} класса \(_{data_cnn["sign_description"]}_\)\.')
