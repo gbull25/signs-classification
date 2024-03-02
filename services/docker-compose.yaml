@@ -1,0 +1,22 @@
+services:
+  sign_classifier:
+    build: sign_classifier
+    ports: 
+      - "80:80"
+    volumes:
+    - ./sign_classifier/models:/models
+    - ./sign_classifier/app:/code/app
+    healthcheck:
+      test: curl -sS http://127.0.0.1 || exit 1
+      interval: 1m
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+     
+  tg_bot:
+    build: tg_bot
+    depends_on:
+      sign_classifier:
+        condition: service_healthy
+    volumes:
+    - ./tg_bot:/bot

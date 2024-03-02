@@ -15,14 +15,13 @@ from aiogram.types.input_file import FSInputFile
 from aiogram_tests import MockedBot
 from aiogram_tests.handler import CallbackQueryHandler, MessageHandler
 from aiogram_tests.types.dataset import CALLBACK_QUERY, MESSAGE, MESSAGE_WITH_PHOTO
+from handlers import menu, predictions
 
-from services.tg_bot.handlers import menu, predictions
-
-RATING_FILE_PATH = pathlib.Path("services/tg_bot/handlers/rating.csv")
+RATING_FILE_PATH = pathlib.Path("./handlers/rating.csv")
 
 
 async def mock_download(*_args, **_kwargs):
-    with open('./services/tg_bot/sample_images/01576.png', 'rb') as f:
+    with open('./sample_images/01576.png', 'rb') as f:
         io = BytesIO(f.read())
     return io
 
@@ -156,14 +155,14 @@ async def test_get_rating(request_rating_1, request_rating_2):
     after_bot = request_rating_2
 
     lines = []
-    async with aiofiles.open('services/tg_bot/handlers/rating.csv',
+    async with aiofiles.open(RATING_FILE_PATH,
                              mode="r", encoding="utf-8", newline="") as f:
         async for row in AsyncReader(f):
             if row[1] != 'rating':
                 lines.append(row)
         lines.pop()
 
-    async with aiofiles.open('services/tg_bot/handlers/rating.csv',
+    async with aiofiles.open(RATING_FILE_PATH,
                              mode="w", encoding="utf-8", newline="") as f:
         writer = AsyncWriter(f)
         await writer.writerow(['user_id', 'rating'])
@@ -202,7 +201,8 @@ async def test_predict_image():
     calls = await requester.query(MESSAGE_WITH_PHOTO.as_object())
     answer_message = calls.send_message.fetchone().text
     true_text = ("*HOG SVM* считает, что этот знак 38 класса \\(_Keep right_\\),\n"
-                 "*SIFT SVM* считает, что этот знак 38 класса \\(_Keep right_\\)\.")
+                 "*SIFT SVM* считает, что этот знак 38 класса \\(_Keep right_\\),\n"
+                 "*CNN* считает, что этот знак 38 класса \\(_Keep right_\\)\.")
 
     assert answer_message == true_text, "Recieved reply has invalid content."
 

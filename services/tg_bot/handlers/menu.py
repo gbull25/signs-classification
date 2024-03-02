@@ -74,7 +74,7 @@ async def info(message: types.Message):
 @router.message(F.text.lower() == "получить картинку")
 @router.message(Command('image'))
 async def upload_photo(message: Message):
-    path = "services/tg_bot/sample_images/**"
+    path = "sample_images/**"
     filename = random.choice(glob.glob(path))
     # Отправка файла из файловой системы
     image_from_pc = FSInputFile(path=filename)
@@ -120,7 +120,7 @@ async def upload_photos(message: Message):
 async def send_album(callback: types.CallbackQuery):
     num_photos = int(callback.data.split("_")[1])
     # path = "services/tg_bot/sample_images/**"
-    photos_paths = glob.glob("services/tg_bot/sample_images/**")
+    photos_paths = glob.glob("sample_images/**")
 
     album_builder = MediaGroupBuilder(
         caption=f"Прошу, ваши {num_photos} тестовых картинок готовы\!"
@@ -176,7 +176,7 @@ async def get_rating(callback: types.CallbackQuery):
     user_id = callback.from_user.id
     rating_value = int(callback.data.split("_")[1])
 
-    async with aiofiles.open('services/tg_bot/handlers/rating.csv',
+    async with aiofiles.open('handlers/rating.csv',
                              'a',  encoding="utf-8", newline="") as f:
         writer = AsyncWriter(f)
         await writer.writerow([user_id, rating_value])
@@ -192,7 +192,7 @@ async def get_rating(callback: types.CallbackQuery):
 async def current_rating(message: types.Message):
     rating_list = []
     await message.reply("Считаю текущий рейтинг бота\.\.")
-    async with aiofiles.open('services/tg_bot/handlers/rating.csv',
+    async with aiofiles.open('handlers/rating.csv',
                              mode="r", encoding="utf-8", newline="") as f:
         async for row in AsyncReader(f):
             if row[1] != 'rating':
