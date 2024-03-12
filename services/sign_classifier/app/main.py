@@ -5,6 +5,12 @@ import uvicorn
 from fastapi import FastAPI, File, UploadFile
 
 from . import classify
+from fastapi import FastAPI, Depends
+from fastapi_users import FastAPIUsers
+from postgre.auth.auth import auth_backend
+from postgre.auth.database import User
+from postgre.auth.manager import get_user_manager
+from postgre.auth.schemas import UserRead, UserCreate
 
 app = FastAPI(
     # lifespan=lifespan,
@@ -15,6 +21,38 @@ app = FastAPI(
         "url": "https://github.com/gbull25/signs-classification"
     }
     )
+
+# @app.get()
+
+fastapi_users = FastAPIUsers[User, int](
+    get_user_manager,
+    [auth_backend],
+)
+
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend),
+    prefix="/auth/jwt",
+    tags=["auth"],
+)
+
+# Добавляем возможность регистрации
+app.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate),
+    prefix="/auth",
+    tags=["auth"],
+)
+
+current_user = fastapi_users.current_user()
+
+
+@app.get("/protected-route")
+def protected_route(user: User = Depends(current_user)):
+    return f"Hello, {user.username}"
+
+
+@app.get("/unprotected-route")
+def unprotected_route():
+    return f"Hello, anonym"
 
 
 @app.post("/predict/sign_cnn")
