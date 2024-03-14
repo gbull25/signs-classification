@@ -6,13 +6,20 @@ services:
     volumes:
     - ./sign_classifier/models:/models
     - ./sign_classifier/app:/code/app
+    depends_on:
+      - redis
     healthcheck:
       test: curl -sS http://127.0.0.1 || exit 1
       interval: 1m
       timeout: 30s
       retries: 5
       start_period: 30s
-     
+    
+  redis:
+    image: redis
+    ports: 
+      - "6372:6379"
+
   tg_bot:
     build: tg_bot
     depends_on:

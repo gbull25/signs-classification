@@ -1,6 +1,8 @@
 import logging
+from datetime import datetime
 from typing import Dict, List, Union
 
+import redis
 import uvicorn
 from fastapi import FastAPI, File, UploadFile
 
@@ -16,6 +18,48 @@ app = FastAPI(
     }
     )
 
+REDIS_CLIENT = redis.Redis(host='redis', port='6379', db=0)
+
+
+def append_history(image: bytes, model: str, data: Dict[str, Union[int, str, bool]]) -> bool:
+    try:
+        REDIS_CLIENT.xadd(
+            "predictions:history",
+            {
+                "image": image,
+                "model_used": model,
+                "success": int(data["success"]),
+                "sign_class": data.get("sign_class"),
+                "sign_description": data.get("sign_description"),
+            }
+        )
+        logging.info(f"Successfully added entry to the 'prediction:history'.")
+        logging.info(f"Stream length: {REDIS_CLIENT.xlen('predictions:history')}")
+        return True
+    except Exception as e:
+        logging.error(f"An error occured during redis transaction: {e}")
+        return False
+
+
+@app.get("/history")
+def get_history(n_entries: int = 10):
+    try:
+        query = REDIS_CLIENT.xrange("predictions:history", "-", "+", n_entries)
+        logging.debug(f"Query received: {query}")
+        logging.info(f"Successfully received history of {len(query)} items")
+    except Exception as e:
+        logging.info(f"An error occured during redis transaction: {e}")
+
+    # Make proper dict from query
+    data = {}
+    for item in query:
+        # timestamp in seconds of an entry
+        ts = int(item[0].decode('utf-8')[:10])
+        hr_date = datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S, %f')
+        # cant decode image, not sure why, so i skip it for now
+        data[hr_date] = {key.decode('utf-8'): value.decode('utf-8') for key, value in item[1].items() if key != b'image'}
+
+    return data
 
 @app.post("/predict/sign_cnn")
 def predict_one_sign_cnn(file: bytes = File(...)) -> Dict[str, Union[int, str, bool]]:
@@ -29,6 +73,8 @@ def predict_one_sign_cnn(file: bytes = File(...)) -> Dict[str, Union[int, str, b
         - data (dict): dict with info about image processing and sign class.
     """
     data = classify.predict_cnn_image(file)
+
+    append_history(file, model='cnn', data=data)
 
     return data
 
