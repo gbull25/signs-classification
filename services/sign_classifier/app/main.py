@@ -1,10 +1,12 @@
+import base64
 import logging
 from datetime import datetime
 from typing import Dict, List, Union
 
 import redis
 import uvicorn
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, Request, UploadFile
+from fastapi.templating import Jinja2Templates
 
 from . import classify
 
@@ -17,8 +19,18 @@ app = FastAPI(
         "url": "https://github.com/gbull25/signs-classification"
     }
     )
+templates = Jinja2Templates(directory="app/templates")
 
 REDIS_CLIENT = redis.Redis(host='redis', port='6379', db=0)
+
+# TODO: make this class more general, representing prediction instance for every endpoint/fucntion
+class HistoryEntry():
+    def __init__(self, image: bytes, model_used: str, success: int, sign_class: int, sign_description: str):
+        self.image = image.decode('utf-8')
+        self.model_used = model_used.decode('utf-8')
+        self.success_status = success.decode('utf-8')
+        self.sign_class = sign_class.decode('utf-8')
+        self.sign_description = sign_description.decode('utf-8')
 
 
 def append_history(image: bytes, model: str, data: Dict[str, Union[int, str, bool]]) -> bool:
@@ -61,6 +73,28 @@ def get_history(n_entries: int = 10):
 
     return data
 
+
+@app.get("/history_pretty")
+def get_history_pretty(request: Request, n_entries: int = 10):
+    try:
+        query = REDIS_CLIENT.xrange("predictions:history", "-", "+", n_entries)
+        logging.debug(f"Query received: {query}")
+        logging.info(f"Successfully received history of {len(query)} items")
+    except Exception as e:
+        logging.info(f"An error occured during redis transaction: {e}")
+
+    # Make proper dict from query
+    history_list = []
+    for item in query:
+        # timestamp in seconds of an entry
+        ts = int(item[0].decode('utf-8')[:10])
+        hr_date = datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S, %f')
+        # cant decode image, not sure why, so i skip it for now
+        data = {key.decode('utf-8'): value for key, value in item[1].items()}
+        history_list.append(HistoryEntry(**data))
+
+    return templates.TemplateResponse("history.html", {"request": request, "history_list": history_list})
+
 @app.post("/predict/sign_cnn")
 def predict_one_sign_cnn(file: bytes = File(...)) -> Dict[str, Union[int, str, bool]]:
     """
@@ -74,7 +108,7 @@ def predict_one_sign_cnn(file: bytes = File(...)) -> Dict[str, Union[int, str, b
     """
     data = classify.predict_cnn_image(file)
 
-    append_history(file, model='cnn', data=data)
+    append_history(base64.b64encode(file).decode("utf-8"), model='cnn', data=data)
 
     return data
 
