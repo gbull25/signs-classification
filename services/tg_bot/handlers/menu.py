@@ -1,5 +1,6 @@
 import glob
 import random
+import logging
 
 import aiofiles
 import emoji
@@ -10,6 +11,10 @@ from aiogram.filters.command import Command
 from aiogram.types import FSInputFile, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 from aiogram.utils.media_group import MediaGroupBuilder
+
+import requests
+from requests.exceptions import ConnectionError
+logging.basicConfig(level=logging.INFO, format='%(asctime)s: [%(levelname)s] %(message)s')
 
 router = Router()
 
@@ -171,31 +176,32 @@ async def cmd_rating(message: types.Message):
 
 
 # Коллбэк на команду оценить бота
-@router.callback_query(F.data.startswith("rating_"))
-async def get_rating(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    rating_value = int(callback.data.split("_")[1])
-
-    async with aiofiles.open('handlers/rating.csv',
-                             'a',  encoding="utf-8", newline="") as f:
-        writer = AsyncWriter(f)
-        await writer.writerow([user_id, rating_value])
-
-    await callback.answer(
-        text="Спасибо, что воспользовались ботом!",
-        show_alert=True
-    )
+#@router.callback_query(F.data.startswith("rating_"))
+#async def get_rating(callback: types.CallbackQuery):
+#    user_id = callback.from_user.id
+#    rating_value = int(callback.data.split("_")[1])
+#
+#    async with aiofiles.open('handlers/rating.csv',
+#                             'a',  encoding="utf-8", newline="") as f:
+#        writer = AsyncWriter(f)
+#        await writer.writerow([user_id, rating_value])
+#
+#    await callback.answer(
+#        text="Спасибо, что воспользовались ботом!",
+#        show_alert=True
+#    )
 
 
 # Хэндлер на команду текущий рейтинг
-@router.message(F.text.lower() == "текущий рейтинг")
-async def current_rating(message: types.Message):
-    rating_list = []
-    await message.reply("Считаю текущий рейтинг бота\.\.")
-    async with aiofiles.open('handlers/rating.csv',
-                             mode="r", encoding="utf-8", newline="") as f:
-        async for row in AsyncReader(f):
-            if row[1] != 'rating':
-                rating_list.append(int(row[1]))
-    scale = int(np.floor(np.mean(rating_list)))
-    await message.reply(scale * emoji.emojize(":star:"))
+#@router.message(F.text.lower() == "текущий рейтинг")
+#async def current_rating(message: types.Message):
+#    rating_list = []
+#    await message.reply("Считаю текущий рейтинг бота\.\.")
+#    async with aiofiles.open('handlers/rating.csv',
+#                             mode="r", encoding="utf-8", newline="") as f:
+#        async for row in AsyncReader(f):
+#            if row[1] != 'rating':
+#                rating_list.append(int(row[1]))
+#    scale = int(np.floor(np.mean(rating_list)))
+#    await message.reply(scale * emoji.emojize(":star:"))
+

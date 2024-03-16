@@ -1,9 +1,11 @@
 import logging
 from io import BytesIO
 
+import numpy as np
 # import aiohttp
 import requests
-from aiogram import Bot, F, Router
+import emoji
+from aiogram import Bot, F, Router, types
 from aiogram.types import InputMediaPhoto, Message
 from requests.exceptions import ConnectionError
 
@@ -103,3 +105,43 @@ async def predict_image(message: Message, bot: Bot):
                         f'{data_sift["sign_class"]} класса \(_{data_sift["sign_description"]}_\),\n'
                         f'*CNN* считает, что этот знак '
                         f'{data_cnn["sign_class"]} класса \(_{data_cnn["sign_description"]}_\)\.')
+
+
+# Хэндлер на рейтинг
+@router.callback_query(F.data.startswith("rating_"))
+async def add_rating(callback: types.CallbackQuery):
+
+    data = {"user_id": callback.from_user.id,
+            "rating": int(callback.data.split("_")[1])}
+
+    try:
+
+        requests.post("http://sign_classifier:80/rating/add_rating", json = data)
+
+    except ConnectionError as ce:
+
+        logging.error(f"Connection refused error: {ce}")
+        await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
+        return
+
+    await callback.answer(
+        text="Спасибо, что воспользовались ботом!",
+        show_alert=True
+    )
+
+
+@router.message(F.text.lower() == "текущий рейтинг")
+async def current_rating(message: types.Message):
+    await message.reply("Считаю текущий рейтинг бота\.\.")
+
+    try:
+
+        scale = requests.get("http://sign_classifier:80/rating/current_rating").json()
+
+    except ConnectionError as ce:
+
+        logging.error(f"Connection refused error: {ce}")
+        await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
+        return
+
+    await message.reply(int(np.floor(scale["data"])) * emoji.emojize(":star:"))

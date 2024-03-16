@@ -17,6 +17,8 @@ from .auth.schemas import UserCreate, UserRead
 from .auth.config import REDIS_HOST, REDIS_PORT
 from .auth.router import router as role_adding_router
 from .pages.router import router as router_pages
+from .rating.router import router as router_rating
+
 
 app = FastAPI(
     # lifespan=lifespan,
@@ -42,6 +44,7 @@ app.include_router(
     tags=["Auth"],
 )
 
+app.include_router(router_rating)
 app.include_router(router_pages)
 app.include_router(role_adding_router)
 
