@@ -5,12 +5,18 @@ import uvicorn
 from fastapi import FastAPI, File, UploadFile
 
 from . import classify
-from fastapi import FastAPI, Depends
-from fastapi_users import FastAPIUsers
-from postgre.auth.auth import auth_backend
-from postgre.auth.database import User
-from postgre.auth.manager import get_user_manager
-from postgre.auth.schemas import UserRead, UserCreate
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from redis import asyncio as aioredis
+
+from .auth.base_config import auth_backend, fastapi_users
+from .auth.schemas import UserCreate, UserRead
+from .auth.config import REDIS_HOST, REDIS_PORT
+from .auth.router import router as role_adding_router
+from .pages.router import router as router_pages
 
 app = FastAPI(
     # lifespan=lifespan,
@@ -24,35 +30,39 @@ app = FastAPI(
 
 # @app.get()
 
-fastapi_users = FastAPIUsers[User, int](
-    get_user_manager,
-    [auth_backend],
-)
-
 app.include_router(
     fastapi_users.get_auth_router(auth_backend),
-    prefix="/auth/jwt",
-    tags=["auth"],
+    prefix="/auth",
+    tags=["Auth"],
 )
 
-# Добавляем возможность регистрации
 app.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
-    tags=["auth"],
+    tags=["Auth"],
 )
 
-current_user = fastapi_users.current_user()
+app.include_router(router_pages)
+app.include_router(role_adding_router)
+
+origins = [
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "OPTIONS", "DELETE", "PATCH", "PUT"],
+    allow_headers=["Content-Type", "Set-Cookie", "Access-Control-Allow-Headers", "Access-Control-Allow-Origin",
+                   "Authorization"],
+)
 
 
-@app.get("/protected-route")
-def protected_route(user: User = Depends(current_user)):
-    return f"Hello, {user.username}"
-
-
-@app.get("/unprotected-route")
-def unprotected_route():
-    return f"Hello, anonym"
+@app.on_event("startup")
+async def startup_event():
+    redis = aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}", encoding="utf8", decode_responses=True)
+    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
 
 
 @app.post("/predict/sign_cnn")

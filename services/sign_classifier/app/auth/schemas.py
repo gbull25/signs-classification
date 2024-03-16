@@ -1,16 +1,20 @@
+from typing import Optional
+
 from fastapi_users import schemas
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, Json
 
 
 class UserRead(schemas.BaseUser[int]):
     id: int
     email: str
     username: str
-    # пароль здесь выводить, разумеется, нельзя
     role_id: int
     is_active: bool = True
     is_superuser: bool = False
+    is_verified: bool = False
+
+    class Config:
+        orm_mode = True
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -20,7 +24,11 @@ class UserCreate(schemas.BaseUserCreate):
     role_id: int
     is_active: Optional[bool] = True
     is_superuser: Optional[bool] = False
+    is_verified: Optional[bool] = False
 
-# удалим для простоты
-# class UserUpdate(schemas.BaseUserUpdate):
-#     pass
+
+class RoleCreate(BaseModel):
+    id: int
+    name: str
+    permissions: Optional[Json]
+

@@ -3,7 +3,7 @@ FROM python:3.10-bullseye
 WORKDIR /code
 
 RUN apt-get update \
-    && apt-get install ffmpeg libsm6 libxext6 -y
+    && apt-get install netcat ffmpeg libsm6 libxext6 -y
 
 COPY ./requirements.txt /code/requirements.txt
 
@@ -14,4 +14,7 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 # COPY ./app /code/app
 # EXPOSE 80
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "80", "--log-config", "app/log_conf.yaml"]
+ADD docker.sh /
+RUN chmod +x /docker.sh
+
+CMD ["/docker.sh"]
