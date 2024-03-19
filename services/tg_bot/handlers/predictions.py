@@ -19,7 +19,7 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
     media_group = []
     pred_result = []
 
-    redis = await aioredis.from_url("redis://redis:5370")
+    redis = await aioredis.from_url("redis://red-cnsrhu779t8c73a84r60:6379")
     user_id = message.from_user.id
     model = await redis.get("user_id")
     if model == None:

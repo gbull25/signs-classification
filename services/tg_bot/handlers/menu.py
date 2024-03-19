@@ -23,7 +23,7 @@ router = Router()
 # Хэндлер на команду /start
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
-    redis = aioredis.from_url("redis://redis:5370")
+    redis = aioredis.from_url("redis://red-cnsrhu779t8c73a84r60:6379")
 
     user_full_name = message.from_user.full_name
     user_id = message.from_user.id
@@ -181,7 +181,7 @@ async def set_model(message: types.Message):
 # Калбэк на команду установить модель
 @router.callback_query(F.data.startswith("model_"))
 async def set_model_callback(callback: types.CallbackQuery):
-    redis = await aioredis.from_url("redis://redis:5370")
+    redis = await aioredis.from_url("redis://red-cnsrhu779t8c73a84r60:6379")
     user_id = callback.from_user.id
     model = callback.data.split('_')[1]
     await redis.set(user_id, model)
