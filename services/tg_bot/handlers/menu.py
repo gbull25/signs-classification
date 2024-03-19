@@ -3,6 +3,7 @@ import random
 import logging
 
 import aiofiles
+import aioredis
 import emoji
 import numpy as np
 from aiocsv import AsyncReader, AsyncWriter
@@ -22,11 +23,19 @@ router = Router()
 # Хэндлер на команду /start
 @router.message(Command("start"))
 async def cmd_start(message: types.Message):
+    redis = aioredis.from_url("redis://redis:5370")
+
     user_full_name = message.from_user.full_name
+    user_id = message.from_user.id
     await message.answer(f'Привет, {user_full_name}\!\nЭтот бот умеет '
                          f'предсказывать класс немецких дорожных знаков\.\n'
                          f'Загрузи картинку со знаком или даже несколько, '
                          f'и бот попробует угадать, какой класс знака на них изображен\.')
+
+    # Set default model for new user
+    model = await redis.get(user_id)
+    if model == None:
+        await redis.set(user_id, "cnn")
 
     builder = ReplyKeyboardBuilder()
 
@@ -35,10 +44,11 @@ async def cmd_start(message: types.Message):
     bt3 = types.KeyboardButton(text="Получить альбом")
     bt4 = types.KeyboardButton(text="Оценить бота")
     bt5 = types.KeyboardButton(text="Текущий рейтинг")
+    bt6 = types.KeyboardButton(text="Выбрать модель")
 
     builder.row(bt1)
     builder.row(bt2, bt3)
-    builder.row(bt4, bt5)
+    builder.row(bt4, bt5, bt6)
 
     await message.answer("Что бы вы хотели узнать?",
                          reply_markup=builder.as_markup(resize_keyboard=True))
@@ -141,6 +151,43 @@ async def send_album(callback: types.CallbackQuery):
 
     await callback.message.answer_media_group(
         media=album_builder.build()
+    )
+
+
+# Хэндлер на команду установить модель.
+@router.message(F.text.lower() == "выбрать модель")
+@router.message(Command('set_model'))
+async def set_model(message: types.Message):
+    builder = InlineKeyboardBuilder()
+    builder.add(types.InlineKeyboardButton(
+        text="CNN",
+        callback_data="model_cnn")
+    )
+    builder.add(types.InlineKeyboardButton(
+        text="SVC_SIFT",
+        callback_data="model_sift")
+    )
+    builder.add(types.InlineKeyboardButton(
+        text="SVC_HOG",
+        callback_data="model_hog")
+    )
+
+    await message.answer(
+        "Пожалуйста, выберите модель\.",
+        reply_markup=builder.as_markup()
+    )
+
+
+# Калбэк на команду установить модель
+@router.callback_query(F.data.startswith("model_"))
+async def set_model_callback(callback: types.CallbackQuery):
+    redis = await aioredis.from_url("redis://redis:5370")
+    user_id = callback.from_user.id
+    model = callback.data.split('_')[1]
+    await redis.set(user_id, model)
+    await callback.answer(
+        f"Выбрана модель {model}\!",
+        show_alert=True
     )
 
 

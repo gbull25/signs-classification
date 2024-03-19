@@ -27,6 +27,8 @@ services:
     volumes:
       - ./sign_classifier/models:/models
       - ./sign_classifier/app:/code/app
+    depends_on:
+      - redis
     healthcheck:
       test: curl -sS http://127.0.0.1 || exit 1
       interval: 10s

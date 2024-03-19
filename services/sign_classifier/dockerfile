@@ -9,6 +9,8 @@ COPY ./requirements.txt /code/requirements.txt
 
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
+RUN pip install --no-cache-dir jinja2
+
 # VOLUME [ "sign_classifier/models:sign_classifier/models:rw" ]
 
 # COPY ./app /code/app

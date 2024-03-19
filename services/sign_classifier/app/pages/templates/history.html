@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Title</title>
+    </head>
+    <body>
+        <!-- <h1>Add new comment</h1>
+        <form action="" onsubmit="addComment(event)">
+            <input type="text" id="author" autocomplete="off"/>
+            <input type="text" id="content" autocomplete="off"/>
+            <button>Add comment</button>
+        </form> -->
+        <h2>History</h2>
+        <ul id='history_list'>
+            {% for history_entry in history_list %}
+                <li>
+                    <img src="data:image/jpg;base64,{{ history_entry.img }}">
+                    <b> {{ history_entry.cnn_result_class }} </b>
+                    <b> {{ history_entry.cnn_result_description }} </b>
+               </li>
+            {% endfor %}
+        </ul>
+    </body>
+</html>

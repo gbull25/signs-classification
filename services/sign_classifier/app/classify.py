@@ -19,9 +19,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s: [%(levelname)s] %(m
 
 # first iteration models
 logging.info("Loading ML models...")
-#HOG_MODEL = joblib.load(settings.hog_model_path)
-#KMEANS_MODEL = joblib.load(settings.kmeans_model_path)
-#SIFT_MODEL = joblib.load(settings.sift_model_path)
+# HOG_MODEL = joblib.load(settings.hog_model_path)
+# KMEANS_MODEL = joblib.load(settings.kmeans_model_path)
+# SIFT_MODEL = joblib.load(settings.sift_model_path)
 logging.info("Successfully loaded ML models.")
 
 # second iteration model
