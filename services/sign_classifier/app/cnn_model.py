@@ -1,13 +1,13 @@
 import torch.nn as nn
 
 
-class GTSRB_MODEL(nn.Module):
+class gtrsb_model(nn.Module):
     def __init__(self, input_dim, output_dim):
         """
         Initializing the model
         """
 
-        super(GTSRB_MODEL, self).__init__()
+        super(gtrsb_model, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
 

@@ -7,8 +7,15 @@ import redis
 import uvicorn
 from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
-from . import classify
+from .cropped_sign import CroppedSign
+
+# from . import classify
+from .model_loader import ModelLoader
+
+MODELS = ModelLoader()
+REDIS_CLIENT = redis.Redis(host='redis', port='6379', db=0)
 
 app = FastAPI(
     # lifespan=lifespan,
@@ -19,42 +26,24 @@ app = FastAPI(
         "url": "https://github.com/gbull25/signs-classification"
     }
     )
+
 templates = Jinja2Templates(directory="app/templates")
 
-REDIS_CLIENT = redis.Redis(host='redis', port='6379', db=0)
 
-# TODO: make this class more general, representing prediction instance for every endpoint/fucntion
-class HistoryEntry():
-    def __init__(self, image: bytes, model_used: str, success: int, sign_class: int, sign_description: str):
-        self.image = image.decode('utf-8')
-        self.model_used = model_used.decode('utf-8')
-        self.success_status = success.decode('utf-8')
-        self.sign_class = sign_class.decode('utf-8')
-        self.sign_description = sign_description.decode('utf-8')
+class ClassificationResult(BaseModel):
+    sign_class: int | None = None
+    sign_description: str | None = None
+    message: str = "No prediction was made"
 
 
-def append_history(image: bytes, model: str, data: Dict[str, Union[int, str, bool]]) -> bool:
-    try:
-        REDIS_CLIENT.xadd(
-            "predictions:history",
-            {
-                "image": image,
-                "model_used": model,
-                "success": int(data["success"]),
-                "sign_class": data.get("sign_class"),
-                "sign_description": data.get("sign_description"),
-            }
-        )
-        logging.info(f"Successfully added entry to the 'prediction:history'.")
-        logging.info(f"Stream length: {REDIS_CLIENT.xlen('predictions:history')}")
-        return True
-    except Exception as e:
-        logging.error(f"An error occured during redis transaction: {e}")
-        return False
+@app.get("/reload_models")
+def reload_models():
+    global MODELS
+    MODELS = ModelLoader()
 
 
-@app.get("/history")
-def get_history(n_entries: int = 10):
+@app.get("/history", response_model=List[Dict[str, Union[str, int, None]]])
+def get_history(n_entries: int = 10) -> List[Dict[str, Union[str, int, None]]]:
     try:
         query = REDIS_CLIENT.xrange("predictions:history", "-", "+", n_entries)
         logging.debug(f"Query received: {query}")
@@ -63,15 +52,11 @@ def get_history(n_entries: int = 10):
         logging.info(f"An error occured during redis transaction: {e}")
 
     # Make proper dict from query
-    data = {}
-    for item in query:
-        # timestamp in seconds of an entry
-        ts = int(item[0].decode('utf-8')[:10])
-        hr_date = datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S, %f')
-        # cant decode image, not sure why, so i skip it for now
-        data[hr_date] = {key.decode('utf-8'): value.decode('utf-8') for key, value in item[1].items() if key != b'image'}
+    history_list = []
+    for item in query:       
+        history_list.append(CroppedSign.from_redis(item[1]).to_html())
 
-    return data
+    return history_list
 
 
 @app.get("/history_pretty")
@@ -86,156 +71,59 @@ def get_history_pretty(request: Request, n_entries: int = 10):
     # Make proper dict from query
     history_list = []
     for item in query:
-        # timestamp in seconds of an entry
-        ts = int(item[0].decode('utf-8')[:10])
-        hr_date = datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S, %f')
-        # cant decode image, not sure why, so i skip it for now
-        data = {key.decode('utf-8'): value for key, value in item[1].items()}
-        history_list.append(HistoryEntry(**data))
+        history_list.append(CroppedSign.from_redis(item[1]).to_html())
 
     return templates.TemplateResponse("history.html", {"request": request, "history_list": history_list})
 
-@app.post("/predict/sign_cnn")
-def predict_one_sign_cnn(file: bytes = File(...)) -> Dict[str, Union[int, str, bool]]:
-    """
-    Predict traffic sign class with CNN model (one image).
 
+@app.post("/classify_sign", response_model=ClassificationResult)
+def classify_sign(request: Request, file_img: UploadFile, model_name: str = 'cnn') -> ClassificationResult:
+    """Classify which sign is in the image.
+    
     Args:
-        - file (bytes): image represented by bytes.
-
+        - request: http request;
+        - file_img: uploaded image of the sign;
+        - model_name: name of the model to use for classification.
+    
     Returns:
-        - data (dict): dict with info about image processing and sign class.
+        - ClassificationResult: the result of the classification.
     """
-    data = classify.predict_cnn_image(file)
+    logging.info(f"Request received; host: {request.client.host}; " \
+                 f"filename: {file_img.filename}, content_type: {file_img.content_type}")
+    
+    # Read file
+    try:
+        byte_img = file_img.file.read()
+    except Exception as e:
+        logging.error(f"Unexpected error while reading uploaded file:\n\n {e}")
+        return ClassificationResult(message="Unexpected error while reading uploaded file")
 
-    append_history(base64.b64encode(file).decode("utf-8"), model='cnn', data=data)
+    # Define CroppedSign instance
+    sign = CroppedSign(
+        img=byte_img,
+        filename=file_img.filename
+    )
 
-    return data
+    # Access attribute depending on passed model name
+    classify = getattr(sign, f"classify_{model_name}")
+    predicted_class = classify(getattr(MODELS, f"{model_name}_model"))
+    logging.info(f"Prediction results: {predicted_class}")
 
+    # Write to redis history
+    try:
+        REDIS_CLIENT.xadd(
+            "predictions:history",
+            sign.to_redis()
+        )
+        logging.info(f"Successfully added entry to the 'prediction:history'.")
+        logging.info(f"Stream length: {REDIS_CLIENT.xlen('predictions:history')}")
+    except Exception as e:
+        logging.error(f"An error occured during redis transaction: {e}")
 
-@app.post("/predict/signs_cnn")
-def predict_many_signs_cnn(files: List[UploadFile] = File(...)) \
-        -> Dict[str, Dict[str, Union[int, str, bool]]]:
-    """
-    Predict traffic sign class with CNN model (many images).
-
-    Args:
-        - files (list): list with images represented by bytes.
-
-    Returns:
-        - data (dict): dict with info about images processing and signs class.
-    """
-    data = {}
-    image_list = []
-
-    for file in files:
-        try:
-            image_list.append(file.file.read())
-        except Exception:
-            return {"message": "There was an error uploading the file(s)"}
-        finally:
-            file.file.close()
-
-    im_num = 0
-    for image in image_list:
-        im_num += 1
-        data.update({str(im_num) + " image": classify.predict_cnn_image(image)})
-
-    return data
-
-
-@app.post("/predict/sign_hog")
-def predict_one_sign_hog(file: bytes = File(...)) -> Dict[str, Union[int, str, float, bool]]:
-    """
-    Predict traffic sign class on the image HOG features extraction (one image).
-
-    Args:
-        - file (bytes): image represented by bytes.
-
-    Returns:
-        - data (dict): dict with info about image processing and sign class.
-    """
-    data = classify.predict_hog_image(file)
-
-    return data
-
-
-@app.post("/predict/signs_hog")
-def predict_many_signs_hog(files: List[UploadFile] = File(...)) \
-        -> Dict[str, Dict[str, Union[int, str, float, bool]]]:
-    """
-    Predict traffic sign class on the image HOG features extraction (many images).
-
-    Args:
-        - files (list): list with images represented by bytes.
-
-    Returns:
-        - data (dict): dict with info about images processing and signs class.
-    """
-    data = {}
-    image_list = []
-
-    for file in files:
-        try:
-            image_list.append(file.file.read())
-        except Exception:
-            return {"message": "There was an error uploading the file(s)"}
-        finally:
-            file.file.close()
-
-    im_num = 0
-    for image in image_list:
-        im_num += 1
-        data.update({str(im_num) + " image": classify.predict_hog_image(image)})
-
-    return data
-
-
-@app.post("/predict/sign_sift")
-def predict_one_sign_sift(file: bytes = File(...)) -> Dict[str, Union[int, str, float, bool]]:
-    """
-    Predict traffic sign class on the image using SIFT features extraction (one image).
-
-    Args:
-        - file (bytes): image represented by bytes.
-
-    Returns:
-        - data (dict): dict with info about image processing and sign class.
-    """
-    data = classify.predict_sift_image(file)
-
-    return data
-
-
-@app.post("/predict/signs_sift")
-def predict_many_signs_sift(files: List[UploadFile] = File(...)) \
-        -> Dict[str, Dict[str, Union[int, str, float, bool]]]:
-    """
-    Predict traffic sign class on the image SIFT features extraction (many images).
-
-    Args:
-        - files (list): list with images represented by bytes.
-
-    Returns:
-        - data (dict): dict with info about images processing and signs class.
-    """
-    data = {}
-    image_list = []
-
-    for file in files:
-        try:
-            image_list.append(file.file.read())
-        except Exception:
-            return {"message": "There was an error uploading the file(s)"}
-        finally:
-            file.file.close()
-
-    im_num = 0
-    for image in image_list:
-        im_num += 1
-        data.update({str(im_num) + " image": classify.predict_sift_image(image)})
-
-    return data
+    return ClassificationResult(
+        message="Success",
+        **predicted_class
+    )
 
 
 if __name__ == "__main__":

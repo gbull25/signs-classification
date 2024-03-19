@@ -14,13 +14,10 @@
         <ul id='history_list'>
             {% for history_entry in history_list %}
                 <li>
-                    <img src="data:image/jpg;base64,{{ history_entry.image }}">
-                    <b> {{ history_entry.sign_class }} </b>
-                    <b> {{ history_entry.sign_description }} </b>
-               <!-- </li>
-               <li>
-                <b> {{history_entry.sign_prediction}} </b>
-                </li> -->
+                    <img src="data:image/jpg;base64,{{ history_entry.img }}">
+                    <b> {{ history_entry.cnn_result_class }} </b>
+                    <b> {{ history_entry.cnn_result_description }} </b>
+               </li>
             {% endfor %}
         </ul>
     </body>
