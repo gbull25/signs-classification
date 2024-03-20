@@ -1,6 +1,6 @@
 FROM python:3.10-bullseye
 
-WORKDIR /code
+WORKDIR /app
 
 RUN apt-get update \
     && apt-get install netcat ffmpeg libsm6 libxext6 -y
