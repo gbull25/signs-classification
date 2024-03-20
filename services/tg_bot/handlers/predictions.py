@@ -48,7 +48,7 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
             try:
 
                 response = requests.post(
-                    "http://sign_classifier:80/classify_sign",
+                    "https://signs-classification.onrender.com:80/classify_sign",
                     params={'model_name': model},
                     files={'file_img': im}
                 ).json()
@@ -84,7 +84,7 @@ async def predict_image(message: Message, bot: Bot):
     io = await bot.download(message.photo[-1], destination=io)
     im = io.getvalue()
 
-    redis = await aioredis.from_url("redis://redis:5370")
+    redis = await aioredis.from_url("redis://red-cnsrhu779t8c73a84r60:6379")
     user_id = message.from_user.id
     model = await redis.get("user_id")
     if model == None:
@@ -94,7 +94,7 @@ async def predict_image(message: Message, bot: Bot):
     try:
 
         response = requests.post(
-                    "http://sign_classifier:80/classify_sign",
+                    "https://signs-classification.onrender.com/classify_sign",
                     params={'model_name': model},
                     files={'file_img': im}
         ).json()
@@ -119,7 +119,7 @@ async def add_rating(callback: types.CallbackQuery):
 
     try:
 
-        requests.post("http://sign_classifier:80/rating/add_rating", json = data)
+        requests.post("https://signs-classification.onrender.com/rating/add_rating", json = data)
 
     except ConnectionError as ce:
 
@@ -139,7 +139,7 @@ async def current_rating(message: types.Message):
 
     try:
 
-        scale = requests.get("http://sign_classifier:80/rating/current_rating").json()
+        scale = requests.get("https://signs-classification.onrender.com/rating/current_rating").json()
 
     except ConnectionError as ce:
 
