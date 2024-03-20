@@ -48,7 +48,7 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
             try:
 
                 response = requests.post(
-                    "https://signs-classification.onrender.com:80/classify_sign",
+                    "https://signs-classification.onrender.com/classify_sign",
                     params={'model_name': model},
                     files={'file_img': im}
                 ).json()
