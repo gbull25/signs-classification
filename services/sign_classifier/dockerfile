@@ -1,20 +1,16 @@
 FROM python:3.10-bullseye
 
-RUN mkdir /code
-
-WORKDIR /code
+WORKDIR /app
 
 RUN apt-get update \
     && apt-get install netcat ffmpeg libsm6 libxext6 -y
 
 COPY ./requirements.txt /code/requirements.txt
 
-RUN pip install --no-cache-dir --root-user-action=ignore  --upgrade -r requirements.txt
+COPY app /app
 
-RUN pip install --no-cache-dir jinja2
+RUN pip install --no-cache-dir --root-user-action=ignore  --upgrade -r /code/requirements.txt
 
 COPY . .
-
-WORKDIR app
 
 CMD gunicorn main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind=0.0.0.0:80
