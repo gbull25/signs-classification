@@ -29,7 +29,7 @@ from .pages.router import router as router_pages
 from .rating.router import router as router_rating
 
 MODELS = ModelLoader()
-REDIS_CLIENT = redis.Redis(host='redis', port='5370', db=0)
+REDIS_CLIENT = redis.Redis(host='edis://red-cnsrhu779t8c73a84r60', port='6379', db=0)
 
 app = FastAPI(
     # lifespan=lifespan,
