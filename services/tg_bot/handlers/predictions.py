@@ -1,9 +1,11 @@
 import logging
 from io import BytesIO
 
-# import aiohttp
+import aioredis
+import numpy as np
 import requests
-from aiogram import Bot, F, Router
+import emoji
+from aiogram import Bot, F, Router, types
 from aiogram.types import InputMediaPhoto, Message
 from requests.exceptions import ConnectionError
 
@@ -15,9 +17,14 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s: [%(levelname)s] %(m
 @router.message(F.media_group_id, F.content_type.in_({'photo'}))
 async def handle_albums(message: Message, album: list[Message], bot: Bot):
     media_group = []
-    hog_pred = []
-    sift_pred = []
-    cnn_pred = []
+    pred_result = []
+
+    redis = await aioredis.from_url("redis://redis:5370")
+    user_id = message.from_user.id
+    model = await redis.get("user_id")
+    if model == None:
+        model = "cnn"
+        await redis.set(user_id, "cnn")
 
     # aiohttp WIP
     # request_data = aiohttp.FormData()
@@ -40,17 +47,13 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
 
             try:
 
-                # HOG
-                data_hog = requests.post("http://sign_classifier:80/predict/sign_hog", files={'file': im}).json()
-                hog_pred.append((data_hog['sign_class'], data_hog['sign_description']))
-
-                # SIFT
-                data_sift = requests.post("http://sign_classifier:80/predict/sign_sift", files={'file': im}).json()
-                sift_pred.append((data_sift['sign_class'], data_sift['sign_description']))
-
-                # CNN
-                data_cnn = requests.post("http://sign_classifier:80/predict/sign_cnn", files={'file': im}).json()
-                cnn_pred.append((data_cnn['sign_class'], data_cnn['sign_description']))
+                response = requests.post(
+                    "http://sign_classifier:80/classify_sign",
+                    params={'model_name': model},
+                    files={'file_img': im}
+                ).json()
+                logging.info(f"Received a response with prediciton: {response}")
+                pred_result.append((response['sign_class'], response['sign_description']))
 
             except ConnectionError as ce:
 
@@ -64,18 +67,14 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
 
     # await message.answer(res.status)
 
-    data_class = {'hog_class': hog_pred, 'sift_class': sift_pred, 'cnn_class': cnn_pred}
-
     # Возвращаем альбом для удобства чтения результатов классификации
     await message.answer_media_group(media_group)
     # Возвращаем предсказания
     i = 0
-    for hog, sift, cnn in zip(data_class['hog_class'], data_class['sift_class'], data_class['cnn_class']):
+    for pred in pred_result:
         i += 1
         await message.reply(f'На фотографии номер {i}:\n'
-                            f'*HOG SVM* считает, что знак {hog[0]} класса \(_{hog[1]}_\),\n'
-                            f'*SIFT SVM* считает, что знак {sift[0]} класса \(_{sift[1]}_\),\n'
-                            f'*CNN* считает, что знак {cnn[0]} класса \(_{cnn[1]}_\)\.')
+                            f'*{model.upper()}* считает, что знак {pred[0]} класса \(_{pred[1]}_\)\.')
 
 
 # Хэндлер на одну фотографию
@@ -85,11 +84,21 @@ async def predict_image(message: Message, bot: Bot):
     io = await bot.download(message.photo[-1], destination=io)
     im = io.getvalue()
 
+    redis = await aioredis.from_url("redis://redis:5370")
+    user_id = message.from_user.id
+    model = await redis.get("user_id")
+    if model == None:
+        model = "cnn"
+        await redis.set(user_id, "cnn")   
+
     try:
 
-        data_hog = requests.post("http://sign_classifier:80/predict/sign_hog", files={'file': im}).json()
-        data_sift = requests.post("http://sign_classifier:80/predict/sign_sift", files={'file': im}).json()
-        data_cnn = requests.post("http://sign_classifier:80/predict/sign_cnn", files={'file': im}).json()
+        response = requests.post(
+                    "http://sign_classifier:80/classify_sign",
+                    params={'model_name': model},
+                    files={'file_img': im}
+        ).json()
+        logging.info(f"Received a response with prediciton: {response}")
 
     except ConnectionError as ce:
 
@@ -97,9 +106,45 @@ async def predict_image(message: Message, bot: Bot):
         await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
         return
 
-    await message.reply(f'*HOG SVM* считает, что этот знак '
-                        f'{data_hog["sign_class"]} класса \(_{data_hog["sign_description"]}_\),\n'
-                        f'*SIFT SVM* считает, что этот знак '
-                        f'{data_sift["sign_class"]} класса \(_{data_sift["sign_description"]}_\),\n'
-                        f'*CNN* считает, что этот знак '
-                        f'{data_cnn["sign_class"]} класса \(_{data_cnn["sign_description"]}_\)\.')
+    await message.reply(f'*{model.upper()}* считает, что этот знак '
+                        f'{response["sign_class"]} класса \(_{response["sign_description"]}_\)\.')
+
+
+# Хэндлер на рейтинг
+@router.callback_query(F.data.startswith("rating_"))
+async def add_rating(callback: types.CallbackQuery):
+
+    data = {"user_id": callback.from_user.id,
+            "rating": int(callback.data.split("_")[1])}
+
+    try:
+
+        requests.post("http://sign_classifier:80/rating/add_rating", json = data)
+
+    except ConnectionError as ce:
+
+        logging.error(f"Connection refused error: {ce}")
+        await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
+        return
+
+    await callback.answer(
+        text="Спасибо, что воспользовались ботом!",
+        show_alert=True
+    )
+
+
+@router.message(F.text.lower() == "текущий рейтинг")
+async def current_rating(message: types.Message):
+    await message.reply("Считаю текущий рейтинг бота\.\.")
+
+    try:
+
+        scale = requests.get("http://sign_classifier:80/rating/current_rating").json()
+
+    except ConnectionError as ce:
+
+        logging.error(f"Connection refused error: {ce}")
+        await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
+        return
+
+    await message.reply(int(np.floor(scale["data"])) * emoji.emojize(":star:"))

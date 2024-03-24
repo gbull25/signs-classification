@@ -1,18 +1,41 @@
+version: "3.7"
 services:
+  db:
+    image: postgres:15
+    container_name: db_app
+    command: -p 1221
+    ports: 
+      - "5446:1221"
+    expose:
+      - 1221
+    env_file:
+      - ./sign_classifier/app/auth/.env
+
+  redis:
+    image: redis:7
+    container_name: redis_app
+    command: --port 5370
+    expose:
+      - 5370
+    env_file:
+      - ./sign_classifier/app/auth/.env
+
   sign_classifier:
     build: sign_classifier
     ports: 
       - "80:80"
     volumes:
-    - ./sign_classifier/models:/models
-    - ./sign_classifier/app:/code/app
+      - ./sign_classifier/models:/models
+      - ./sign_classifier/app:/code/app
+    depends_on:
+      - redis
     healthcheck:
       test: curl -sS http://127.0.0.1 || exit 1
-      interval: 1m
+      interval: 10s
       timeout: 30s
       retries: 5
       start_period: 30s
-     
+
   tg_bot:
     build: tg_bot
     depends_on:
