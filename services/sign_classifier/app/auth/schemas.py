@@ -31,4 +31,3 @@ class RoleCreate(BaseModel):
     id: int
     name: str
     permissions: Optional[Json]
-

@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import insert
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from .database import get_async_session
 from .models import role
 from .schemas import RoleCreate
-from sqlalchemy.ext.asyncio import AsyncSession
-from .database import get_async_session
 
 router = APIRouter(
     prefix="/roles",

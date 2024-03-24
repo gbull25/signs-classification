@@ -1,9 +1,8 @@
 from app.auth.database import get_async_session
 from app.auth.models import rating
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, insert, func
+from fastapi import APIRouter, Depends
+from sqlalchemy import func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 
 from .schemas import RatingAdd
 
@@ -21,6 +20,7 @@ async def get_rating(session: AsyncSession = Depends(get_async_session)):
         "status": "success",
         "data": result.scalars().all()
     }
+
 
 @router.post("/add_rating")
 async def add_rating(new_operation: RatingAdd, session: AsyncSession = Depends(get_async_session)):

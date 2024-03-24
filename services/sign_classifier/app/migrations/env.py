@@ -1,15 +1,14 @@
-import os
-import sys
 from logging.config import fileConfig
 
 from alembic import context
+from auth.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
+from auth.database import Base, metadata
+
+# from auth.models import *
 from sqlalchemy import engine_from_config, pool
 
-#sys.path.append(os.path.join(sys.path[0], 'app'))
+# sys.path.append(os.path.join(sys.path[0], 'app'))
 
-from auth.models import *
-from auth.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
-from auth.database import metadata, Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

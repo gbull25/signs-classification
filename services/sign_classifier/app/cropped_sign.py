@@ -2,7 +2,7 @@ import base64
 import io
 import logging
 from copy import deepcopy
-from typing import Dict, Tuple, Union
+from typing import Dict, Union
 
 import cv2
 import numpy as np
@@ -10,8 +10,6 @@ import torch
 from PIL import Image
 from skimage.feature import hog
 from torchvision.transforms.v2 import Compose, Resize, ToTensor
-
-from .model_loader import ModelLoader
 
 
 class CroppedSign():
@@ -72,7 +70,7 @@ class CroppedSign():
             sift_result_description: str = None,
             cnn_result_class: int | None = None,
             cnn_result_description: str | None = None,
-        ):
+            ):
 
         self.img = img
         self.filename = filename
@@ -83,7 +81,6 @@ class CroppedSign():
         self.cnn_result_class = cnn_result_class
         self.cnn_result_description = cnn_result_description
 
-    
     def preprocess_for_sift(self, img_shape=(32, 32)):
         """
         Preprocess image, represented by np.array.
@@ -113,7 +110,6 @@ class CroppedSign():
         # Save preprocessed image
         self.preprocessed_sift_img = normalized_gray_img
 
-    
     def classify_hog(self, svc_hog_model):
         """
         Classify cropped sign image with SVC model based on HOG feature extraction.
@@ -136,11 +132,17 @@ class CroppedSign():
         # Predict
         prediction = svc_hog_model['best_model'].predict(data_reshaped)
         pred_class = int(prediction.tolist()[0])
-        
+
         # Save results
         self.hog_result_class = pred_class
         self.hog_result_description = self.describe_by_class[pred_class]
 
+        # Return dict for making response
+        return {
+            "sign_class": self.hog_result_class,
+            "sign_description": self.hog_result_description,
+            "model_used": "cnn_model"
+        }
 
     def classify_sift(self, kmeans_model, svc_sift_model):
         """
@@ -170,14 +172,13 @@ class CroppedSign():
         # Save results
         self.sift_result_class = pred_class
         self.sift_result_description = self.describe_by_class[pred_class]
-        
+
         # Return dict for making response
         return {
             "sign_class": self.sift_result_class,
             "sign_description": self.sift_result_description,
             "model_used": "cnn_model"
         }
-
 
     def classify_cnn(self, cnn_model):
         """
@@ -195,7 +196,6 @@ class CroppedSign():
         image = torch.swapaxes(image, 0, 2)
         image = torch.swapaxes(image, 1, 2)
 
-
         transforms = Compose(
             [
                 Resize([50, 50]),
@@ -206,7 +206,7 @@ class CroppedSign():
         image = transforms(image)
 
         # Predict
-        with torch.no_grad() :
+        with torch.no_grad():
             prediction = model.forward(image[None, :, :, :])
             _, pred_class = torch.max(prediction, 1)
 
@@ -220,7 +220,6 @@ class CroppedSign():
             "sign_description": self.cnn_result_description,
             "model_used": "cnn_model"
         }
-
 
     def to_redis(self) -> Dict[str, Union[str, int]]:
         """
@@ -239,7 +238,6 @@ class CroppedSign():
             logging.info(f"Key: {key}, {type(key)}, Value: {val}, {type(val)}")
 
         return res
-    
 
     def to_html(self) -> Dict[str, Union[str, int]]:
         """"""
@@ -247,7 +245,6 @@ class CroppedSign():
         res["img"] = base64.b64encode(res["img"]).decode("utf-8")
 
         return res
-
 
     @classmethod
     def from_redis(cls, init_data):
