@@ -4,27 +4,24 @@ from datetime import datetime
 from typing import Dict, List, Union
 
 import redis
-from redis import asyncio as aioredis
 import uvicorn
 from fastapi import FastAPI, File, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
 from pydantic import BaseModel
+from redis import asyncio as aioredis
 
+from .auth.base_config import auth_backend, fastapi_users
+from .auth.config import REDIS_HOST, REDIS_PORT
+from .auth.router import router as role_adding_router
+from .auth.schemas import UserCreate, UserRead
 from .cropped_sign import CroppedSign
 
 # from . import classify
 from .model_loader import ModelLoader
-
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi_cache import FastAPICache
-from fastapi_cache.backends.redis import RedisBackend
-
-from .auth.base_config import auth_backend, fastapi_users
-from .auth.schemas import UserCreate, UserRead
-from .auth.config import REDIS_HOST, REDIS_PORT
-from .auth.router import router as role_adding_router
 from .pages.router import router as router_pages
 from .rating.router import router as router_rating
 
@@ -88,9 +85,13 @@ async def startup_event():
 
 
 @app.get("/reload_models")
-def reload_models():
+def reload_models() -> Dict[str, str]:
     global MODELS
-    MODELS = ModelLoader()
+    try:
+        MODELS = ModelLoader()
+        return {"message": "Success"}
+    except Exception as e:
+        return {"message": f"Failed with exception: {e}"}
 
 
 @app.get("/history", response_model=List[Dict[str, Union[str, int, None]]])
