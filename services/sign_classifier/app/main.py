@@ -79,14 +79,15 @@ app.add_middleware(
 )
 
 
-@app.on_event("startup")
-async def startup_event():
-    redis = aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}", encoding="utf8", decode_responses=True)
-    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+# @app.on_event("startup")
+# async def startup_event():
+#     redis = aioredis.from_url(f"redis://{REDIS_HOST}:{REDIS_PORT}", encoding="utf8", decode_responses=True)
+#     FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
 
 
 @app.get("/reload_models")
 def reload_models() -> Dict[str, str]:
+    """Reload models into memory."""
     global MODELS
     try:
         MODELS = ModelLoader()
@@ -97,6 +98,17 @@ def reload_models() -> Dict[str, str]:
 
 @app.get("/history", response_model=List[Dict[str, Union[str, int, None]]])
 def get_history(n_entries: int = 10) -> List[Dict[str, Union[str, int, None]]]:
+    """
+    Loads last {n_entries} processed images from redis db.
+
+    Args:
+        - n_entries: number of entries to return;
+        - redis_conn: connection instance.
+
+    Returns:
+        - list of dicts with history entries;
+        List[Dict[str, Union[str, int, None]]].
+    """
     try:
         query = REDIS_CLIENT.xrange("predictions:history", "-", "+", n_entries)
         logging.debug(f"Query received: {query}")
@@ -114,6 +126,16 @@ def get_history(n_entries: int = 10) -> List[Dict[str, Union[str, int, None]]]:
 
 @app.get("/history_pretty")
 def get_history_pretty(request: Request, n_entries: int = 10):
+    """
+    Loads last {n_entries} processed images from redis db.
+
+    Args:
+        - n_entries: number of entries to return;
+        - redis_conn: connection instance.
+
+    Returns:
+        - HTML-template to render for readability.
+    """
     try:
         query = REDIS_CLIENT.xrange("predictions:history", "-", "+", n_entries)
         logging.debug(f"Query received: {query}")
@@ -133,18 +155,18 @@ def get_history_pretty(request: Request, n_entries: int = 10):
 @app.post("/classify_sign", response_model=ClassificationResult)
 def classify_sign(request: Request, file_img: UploadFile, model_name: str = 'cnn') -> ClassificationResult:
     """Classify which sign is in the image.
-    
+
     Args:
         - request: http request;
         - file_img: uploaded image of the sign;
         - model_name: name of the model to use for classification.
-    
+
     Returns:
         - ClassificationResult: the result of the classification.
     """
     logging.info(f"Request received; host: {request.client.host}; " \
                  f"filename: {file_img.filename}, content_type: {file_img.content_type}")
-    
+
     # Read file
     try:
         byte_img = file_img.file.read()
