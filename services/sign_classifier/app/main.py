@@ -102,6 +102,7 @@ def get_history(n_entries: int = 10) -> List[Dict[str, Union[str, int, None]]]:
         logging.info(f"Successfully received history of {len(query)} items")
     except Exception as e:
         logging.info(f"An error occured during redis transaction: {e}")
+        return
 
     # Make proper dict from query
     history_list = []
@@ -118,6 +119,7 @@ def get_history_pretty(request: Request, n_entries: int = 10):
         logging.info(f"Successfully received history of {len(query)} items")
     except Exception as e:
         logging.info(f"An error occured during redis transaction: {e}")
+        return
 
     # Make proper dict from query
     history_list = []
