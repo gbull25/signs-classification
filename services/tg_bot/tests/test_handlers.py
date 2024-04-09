@@ -229,40 +229,45 @@ async def test_info():
 
     # First message
     answer_message = calls.send_message.fetchall()[0].text
-    true_text = ("Этот телеграм\\-бот является частью студенческого "
-                 "[проекта\\.](https://github.com/gbull25/signs-classification)\n"
-                 "Бот предсказывает класс немецких знаков по фотографиям, "
-                 "используя для этого две ML модели семейства SVM, обученные на "
-                 "SIFT и HOG признаках\\.")
-    assert answer_message == true_text, "Recieved reply has invalid content."
+    text = ("Этот телеграм\-бот является частью студенческого "
+            "[проекта\.](https://github.com/gbull25/signs-classification)\n"
+            "Бот предсказывает класс немецких знаков по фотографиям\.")
+    assert answer_message == text, "Recieved reply has invalid content."
 
     # Second message
     answer_message = calls.send_message.fetchall()[1].text
-    true_text = ("Чтобы получить тестовую фотографию, нажмите на "
-                 "кнопку 'Получить картинку'\\.\nОтправьте фотографию "
-                 "или несколько фотографий со сжатием, чтобы получить "
-                 "предсказание класса знака обеими моделями для каждой из них\\.")
-    assert answer_message == true_text, "Recieved reply has invalid content."
+    text = ("В настоящий момент в боте реализовано три модели "
+            "машинного обучения, переключиться между ними можно в меню\.")
+    assert answer_message == text, "Recieved reply has invalid content."
 
     # Third message
     answer_message = calls.send_message.fetchall()[2].text
-    true_text = ("Если вы пользуетесь ботом с мобильного устройства, "
-                 "рекомендуется пересылать боту сообщения с полученными тестовыми картинками, "
-                 "без предварительного сохранения фотографий на внутреннюю память телефона, "
-                 "во избежание дополнительного сжатия\\.")
-    assert answer_message == true_text, "Recieved reply has invalid content."
+    text = ("Чтобы получить тестовую фотографию, нажмите на "
+            "кнопку 'Получить картинку'\.\nОтправьте фотографию "
+            "или несколько фотографий со сжатием, чтобы получить "
+            "предсказание класса знака текущей моделью для каждой из них\.")
+    assert answer_message == text, "Recieved reply has invalid content."
 
     # Fourth message
     answer_message = calls.send_message.fetchall()[3].text
-    true_text = ("Если вы хотите оценить бота, нажмите на кнопку "
-                 "'Оценить бота'\\.\nУчтите, что на текущий момент "
-                 "каждый пользователь может оставлять неограниченное "
-                 "количество оценок, сделано это с целью бесстыдной накрутки рейтинга\\. "
-                 "В будущем, конечно, это будет изменено\\.")
-    assert answer_message == true_text, "Recieved reply has invalid content."
+    text = ("Если вы пользуетесь ботом с мобильного устройства, "
+            "рекомендуется пересылать боту сообщения с полученными тестовыми картинками, "
+            "без предварительного сохранения фотографий на внутреннюю память телефона, "
+            "во избежание дополнительного сжатия\.")
+    assert answer_message == text, "Recieved reply has invalid content."
 
     # Fifth message
     answer_message = calls.send_message.fetchall()[4].text
-    true_text = ("Чтобы получить теущий рейтинг бота, нажмите на кнопку "
-                 "'Текущий рейтинг'\\.\nСпасибо и хорошего вам дня\\!")
-    assert answer_message == true_text, "Recieved reply has invalid content."
+    text = ("Если вы хотите оценить бота, нажмите на кнопку "
+            "'Оценить бота'\.\nУчтите, что "
+            "каждый пользователь может оставить только одну оценку, "
+            "но ее можно менять\.")
+    assert answer_message == text, "Recieved reply has invalid content."
+
+    # SIxth message
+    answer_message = calls.send_message.fetchall()[5].text
+    text = ("Если вы хотите оценить бота, нажмите на кнопку "
+            "'Оценить бота'\.\nУчтите, что "
+            "каждый пользователь может оставить только одну оценку, "
+            "но ее можно менять\.")
+    assert answer_message == text, "Recieved reply has invalid content."

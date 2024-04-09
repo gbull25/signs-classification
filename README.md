@@ -3,6 +3,10 @@
 
 Ссылка на Яндекс.Диск с данными - [тут](https://disk.yandex.ru/d/Lt3161xIH5m0MQ).
 
+Ссылки на Docker Hub:
+- [Телеграм бот](https://hub.docker.com/repository/docker/gbull25/tg_bot/general)
+- [Фастапи сервис](https://hub.docker.com/repository/docker/gbull25/sign_classifier/general)
+
 
 Схема репозитория (WIP)
 ------------

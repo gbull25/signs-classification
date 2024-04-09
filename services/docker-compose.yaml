@@ -21,6 +21,7 @@ services:
       - ./sign_classifier/app/auth/.env
 
   sign_classifier:
+    image: gbull25/sign_classifier:latest
     build: sign_classifier
     ports: 
       - "80:80"
@@ -37,6 +38,7 @@ services:
       start_period: 30s
 
   tg_bot:
+    image: gbull25/tg_bot:latest
     build: tg_bot
     depends_on:
       sign_classifier:
