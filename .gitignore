@@ -1,7 +1,7 @@
 # Virtual enviroment
 **venv/
-**env/
-.env
+#**env/
+#.env
 .venv
 
 # Python & Jupyter
@@ -53,4 +53,4 @@ share/python-wheels/
 **kmeans.gz
 **sift_svm.gz
 **lzma_hog_proba.xz
-**cnn_torch.pt
+#**cnn_torch.pt
