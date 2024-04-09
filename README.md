@@ -14,7 +14,7 @@
 Процесс запуска проекта:
 
 1. Склонировать репозиторий 
-2. Перейти в текующую ветку (checkpoiny_nine_fix)
+2. Перейти в текующую ветку (checkpoint_nine_fix)
 3. Перейти в директорию signs_classification/services
 4. Выполнить команду **docker-compose up**
 
