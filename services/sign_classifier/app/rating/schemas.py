@@ -11,3 +11,4 @@ class RatingGet(BaseModel):
 class RatingAdd(BaseModel):
     user_id: int
     rating: int
+

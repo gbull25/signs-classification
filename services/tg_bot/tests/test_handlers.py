@@ -1,14 +1,12 @@
-import pathlib
+from datetime import datetime
 from io import BytesIO
 from unittest import mock
 
-import aiofiles
 import emoji
 import numpy as np
-import pandas as pd
 import pytest
 import pytest_asyncio
-from aiocsv import AsyncReader, AsyncWriter
+import requests
 from aiogram import Bot
 from aiogram.filters import Command
 from aiogram.types.input_file import FSInputFile
@@ -17,10 +15,9 @@ from aiogram_tests.handler import CallbackQueryHandler, MessageHandler
 from aiogram_tests.types.dataset import CALLBACK_QUERY, MESSAGE, MESSAGE_WITH_PHOTO
 from handlers import menu, predictions
 
-RATING_FILE_PATH = pathlib.Path("./handlers/rating.csv")
-
 
 async def mock_download(*_args, **_kwargs):
+    """Mocked download, imitate picture downloaded from tg."""
     with open('./sample_images/01576.png', 'rb') as f:
         io = BytesIO(f.read())
     return io
@@ -28,25 +25,18 @@ async def mock_download(*_args, **_kwargs):
 
 @pytest_asyncio.fixture
 async def current_rating():
-    rating_df = pd.read_csv(RATING_FILE_PATH)
-    return int(np.floor(rating_df['rating'].mean()))
-
-
-@pytest.fixture
-async def request_rating_1():
-    rating_df = pd.read_csv(RATING_FILE_PATH)
-    return rating_df['rating'].mean()
-
-
-@pytest.fixture
-async def request_rating_2():
-    rating_df = pd.read_csv(RATING_FILE_PATH)
-    return rating_df['rating'].mean()
+    """Fixture to get current rating from db."""
+    response = requests.get("http://sign_classifier:80/rating/current_rating").json()
+    return int(response["data"][0])
 
 
 @pytest.mark.asyncio
 async def test_current_rating(current_rating):
-    requester = MockedBot(request_handler=MessageHandler(menu.current_rating,
+    """Test current_rating handler.
+    
+    Must return the same rating as it's observed from db.
+    """
+    requester = MockedBot(request_handler=MessageHandler(predictions.current_rating,
                                                          auto_mock_success=True))
     calls = await requester.query(MESSAGE.as_object(text="текущий рейтинг"))
     answer_message = calls.send_message.fetchone().text
@@ -57,6 +47,11 @@ async def test_current_rating(current_rating):
 
 @pytest.mark.asyncio
 async def test_upload_photo():
+    """
+    Test upload photo handler.
+
+    Must return photo and correct caption.
+    """
     requester = MockedBot(request_handler=MessageHandler(menu.upload_photo,
                                                          auto_mock_success=True))
     calls = await requester.query(MESSAGE.as_object(text="получить картинку"))
@@ -73,7 +68,12 @@ async def test_upload_photo():
 
 # upload_photos handler test
 @pytest.mark.asyncio
-async def test_upload_photos_handler():
+async def test_upload_photos():
+    """
+    Test upload photos handler.
+
+    Must return inline keyboard and correct capture.
+    """
     requester = MockedBot(request_handler=MessageHandler(menu.upload_photos, auto_mock_success=True))
     calls = await requester.query(MESSAGE.as_object(text="получить альбом"))
     answer_message = calls.send_message.fetchone()
@@ -92,7 +92,12 @@ async def test_upload_photos_handler():
 
 # send_album callback test
 @pytest.mark.asyncio
-async def test_send_album_callback():
+async def test_send_album():
+    """
+    Test send_album callback.
+
+    Must return correct number of photos and correct caption.
+    """
     requester = MockedBot(CallbackQueryHandler(menu.send_album))
 
     # Make test data to request n_photos in album
@@ -120,6 +125,11 @@ async def test_send_album_callback():
 
 @pytest.mark.asyncio
 async def test_cmd_rating():
+    """
+    Test cmd_rating handler.
+
+    Must return inline keyboard and correct caption.
+    """
     requester = MockedBot(request_handler=MessageHandler(menu.cmd_rating, auto_mock_success=True))
     calls = await requester.query(MESSAGE.as_object(text="оценить бота"))
     answer_message = calls.send_message.fetchone()
@@ -136,12 +146,13 @@ async def test_cmd_rating():
 
 
 @pytest.mark.asyncio
-async def test_get_rating(request_rating_1, request_rating_2):
+async def test_add_rating():
+    """
+    Test add_rating handler.
 
-    # measure state of rating.csv before calling bot
-    before_bot = request_rating_1
-
-    requester = MockedBot(CallbackQueryHandler(menu.get_rating))
+    Must return correct caption and write new rating record to the db.
+    """
+    requester = MockedBot(CallbackQueryHandler(predictions.add_rating))
 
     # Make test data to write rating
     mark = np.random.randint(1, 6)
@@ -151,31 +162,27 @@ async def test_get_rating(request_rating_1, request_rating_2):
     calls = await requester.query(callback_query)
     answer_message = calls.answer_callback_query.fetchone()
 
-    # measure state of rating.csv after calling bot
-    after_bot = request_rating_2
+    try:
+        response = requests.post("http://sign_classifier:80/rating/get_rating_by_id", params={"user_id": 12345678}).json()
+        requests.post("http://sign_classifier:80/rating/delete_rating", params={"user_id": 12345678})
+    except ConnectionError:
+        assert False, "Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!"
 
-    lines = []
-    async with aiofiles.open(RATING_FILE_PATH,
-                             mode="r", encoding="utf-8", newline="") as f:
-        async for row in AsyncReader(f):
-            if row[1] != 'rating':
-                lines.append(row)
-        lines.pop()
+    record_ts = datetime.strptime(response["data"]["timestamp"], "%Y-%m-%dT%H:%M:%S.%f")
+    age = record_ts - datetime.utcnow()
 
-    async with aiofiles.open(RATING_FILE_PATH,
-                             mode="w", encoding="utf-8", newline="") as f:
-        writer = AsyncWriter(f)
-        await writer.writerow(['user_id', 'rating'])
-        for row in lines:
-            await writer.writerow(row)
-
-    assert before_bot != after_bot, "New rating has not been received"
+    assert age.seconds > 10, "New rating has not been received, (record is too old.)"
     assert answer_message.text == "Спасибо, что воспользовались ботом!", \
         "Recieved reply has invalid content."
 
 
 @pytest.mark.asyncio
 async def test_cmd_start():
+    """
+    Test cmd_start handler.
+
+    Must return correct caption.
+    """
     requester = MockedBot(MessageHandler(menu.cmd_start, Command(commands=["start"])))
     calls = await requester.query(MESSAGE.as_object(text="/start"))
 
@@ -197,18 +204,26 @@ async def test_cmd_start():
 @mock.patch.object(Bot, 'download', mock_download, create=True)
 @pytest.mark.asyncio
 async def test_predict_image():
+    """
+    Test predict_image handler.
+
+    Must correctly predict the image (its always the same) and return correct caption. 
+    """
     requester = MockedBot(request_handler=MessageHandler(predictions.predict_image))
     calls = await requester.query(MESSAGE_WITH_PHOTO.as_object())
     answer_message = calls.send_message.fetchone().text
-    true_text = ("*HOG SVM* считает, что этот знак 38 класса \\(_Keep right_\\),\n"
-                 "*SIFT SVM* считает, что этот знак 38 класса \\(_Keep right_\\),\n"
-                 "*CNN* считает, что этот знак 38 класса \\(_Keep right_\\)\.")
+    true_text = ("*CNN* считает, что этот знак 38 класса \\(_Keep right_\\)\.")
 
     assert answer_message == true_text, "Recieved reply has invalid content."
 
 
 @pytest.mark.asyncio
 async def test_info():
+    """
+    Test info handler.
+
+    Must return correct caption.
+    """
     requester = MockedBot(MessageHandler(menu.info, auto_mock_success=True))
     calls = await requester.query(MESSAGE.as_object(text="информация"))
 
