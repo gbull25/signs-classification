@@ -2,6 +2,7 @@ import logging
 from typing import Dict, List, Union
 
 import redis
+import torch
 from fastapi import Depends, FastAPI, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
@@ -32,6 +33,13 @@ class ClassificationResult(BaseModel):
     message: str = "No prediction was made"
 
 
+class DetectionResult(BaseModel):
+    """Classification result validation model."""
+    signs_classes: Union[torch.FloatTensor, torch.Tensor]| None = None
+    signs_pred_confidence: Union[torch.FloatTensor, torch.Tensor] | None = None
+    signs_bboxes:  Union[torch.FloatTensor, torch.Tensor]
+
+
 def get_redis():
     """Get redis connection."""
     return redis.Redis(connection_pool=pool)
@@ -47,7 +55,7 @@ MODELS = ModelLoader()
 
 
 app = FastAPI(
-    # lifespan=lifespan,
+    # lifespaModelLoadern=lifespan,
     title="Predict the class of a sign",
     version="1.0",
     contact={
@@ -224,6 +232,67 @@ def classify_sign(
     else:
         predicted_class = classify(getattr(MODELS, f"{model_name}_model"))
     logging.info(f"Prediction results: {predicted_class}")
+
+    # Write to redis history
+    try:
+        redis_conn.xadd(
+            "predictions:history",
+            sign.to_redis()
+        )
+        logging.info("Successfully added entry to the 'prediction:history'.")
+        logging.info(f"Stream length: {redis_conn.xlen('predictions:history')}")
+    except Exception as e:
+        logging.error(f"An error occured during redis transaction: {e}")
+
+    return ClassificationResult(
+        message="Success",
+        **predicted_class
+    )
+
+
+@app.post(
+    "/detect_sign",
+    response_model=DetectionResult
+    )
+def detect_sign(
+    request: Request,
+    file_img: UploadFile,
+    model_name: str = 'yolo',
+    redis_conn=Depends(get_redis)
+        ) -> DetectionResult:
+    """Classify which sign is in the image.
+
+    Args:
+        - request: http request;
+        - file_img: uploaded image of the sign;
+        - model_name: name of the model to use for detection.
+
+    Returns:
+        - DetectionResult: the result of the detection.
+    """
+    logging.info(f"Request received; host: {request.client.host}; "
+                 f"filename: {file_img.filename}, content_type: {file_img.content_type}")
+
+    # Read file
+    try:
+        byte_img = file_img.file.read()
+    except Exception as e:
+        logging.error(f"Unexpected error while reading uploaded file:\n\n {e}")
+        return ClassificationResult(message="Unexpected error while reading uploaded file")
+    
+    # Define CroppedSign instance
+    sign = CroppedSign(
+        img=byte_img,
+        filename=file_img.filename
+    )
+
+    detect = getattr(sign, f"detect_{model_name}")
+    predicted_class = detect(getattr(MODELS, f"{model_name}_model"))
+    logging.info(f"Prediction results: {predicted_class}")
+    #result = MODELS.yolo_model.predict(byte_img, conf=0.1)
+    #logging.info(f"Classification results, classes: {result[0].boxes.cls}")
+    #logging.info(f"Classification results, confidence: {result[0].boxes.conf}")
+    #logging.info(f"Classification results, bboxes: {result[0].boxes.data}")
 
     # Write to redis history
     try:

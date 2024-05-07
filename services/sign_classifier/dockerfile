@@ -11,6 +11,8 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
 RUN pip install --no-cache-dir jinja2
 
+RUN pip install --no-cache-dir ultralytics
+
 # VOLUME [ "sign_classifier/models:sign_classifier/models:rw" ]
 
 # COPY ./app /code/app
