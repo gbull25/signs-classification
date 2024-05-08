@@ -6,6 +6,7 @@ import torch
 from fastapi import Depends, FastAPI, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .auth.base_config import auth_backend, fastapi_users
@@ -19,7 +20,10 @@ from .utils import pool
 
 # from fastapi_cache import FastAPICache
 # from fastapi_cache.backends.redis import RedisBackend
-
+import io
+import imageio
+from imageio import v3 as iio
+from fastapi import Response
 
 # ---------------------------------------------------------------------------- #
 #                       CLASSES, FUNCTIONS, GLOBAL VARS.                       #
@@ -35,9 +39,8 @@ class ClassificationResult(BaseModel):
 
 class DetectionResult(BaseModel):
     """Classification result validation model."""
-    signs_classes: Union[torch.FloatTensor, torch.Tensor]| None = None
-    signs_pred_confidence: Union[torch.FloatTensor, torch.Tensor] | None = None
-    signs_bboxes:  Union[torch.FloatTensor, torch.Tensor]
+    signs_bboxes:  List | None = None
+    #message: str = "No prediction was made"
 
 
 def get_redis():
@@ -251,15 +254,14 @@ def classify_sign(
 
 
 @app.post(
-    "/detect_sign",
-    response_model=DetectionResult
+    "/detect_sign"
     )
 def detect_sign(
     request: Request,
     file_img: UploadFile,
     model_name: str = 'yolo',
     redis_conn=Depends(get_redis)
-        ) -> DetectionResult:
+        ):
     """Classify which sign is in the image.
 
     Args:
@@ -287,12 +289,19 @@ def detect_sign(
     )
 
     detect = getattr(sign, f"detect_{model_name}")
-    predicted_class = detect(getattr(MODELS, f"{model_name}_model"))
-    logging.info(f"Prediction results: {predicted_class}")
+    detections = detect(getattr(MODELS, f"{model_name}_model"))
+    #logging.info(f"Prediction results: {sign_boxes}")
     #result = MODELS.yolo_model.predict(byte_img, conf=0.1)
     #logging.info(f"Classification results, classes: {result[0].boxes.cls}")
     #logging.info(f"Classification results, confidence: {result[0].boxes.conf}")
     #logging.info(f"Classification results, bboxes: {result[0].boxes.data}")
+
+    # Return an image
+    with io.BytesIO() as buf:
+        iio.imwrite(buf, detections['crop_image'][0], plugin="pillow", format="JPEG")
+        im_bytes = buf.getvalue()
+        
+    headers = {'Content-Disposition': 'inline; filename="test.jpeg"'}
 
     # Write to redis history
     try:
@@ -305,10 +314,8 @@ def detect_sign(
     except Exception as e:
         logging.error(f"An error occured during redis transaction: {e}")
 
-    return ClassificationResult(
-        message="Success",
-        **predicted_class
-    )
+    #return FileResponse(detections['crop_image'])
+    return Response(im_bytes, headers=headers, media_type='image/jpeg')
 
 
 # if __name__ == "__main__":

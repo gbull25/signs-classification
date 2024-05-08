@@ -226,27 +226,41 @@ class CroppedSign():
         
         """
 
-        # Convert to tensor, normalize,
+        # Read image
         local_img = np.array(Image.open(io.BytesIO(self.img)).convert('RGB'))
 
         # Predict 
-        prediction = yolo_model.predict(local_img, conf=0.1)
+        detections = yolo_model(local_img, conf=0.1)
 
+        self.yolo_detection_result = []
+        # Read result object for every image
+        for input in detections:
+            self.yolo_detection_result.append(input)
+        
+            # Image name
+            img_name = input.path.split('/')[-1]
 
-        # Save results
-        self.yolo_result_class = prediction[0].boxes.cls
-        self.yolo_result_conf = prediction[0].boxes.conf
-        self.yolo_result_bbox = prediction[0].boxes.xywh
-        #self.yolo_result_class = pred_class.item()
-        #self.cnn_result_description = self.describe_by_class[pred_class.item()]
+            bbox_lst = []
+            crop_lst = []
 
-        # Return dict for making response
+            # Read bboxes  
+            for sign_bbox in input.boxes.xyxy.tolist():
+                    x1, y1, x2, y2 = map(int, sign_bbox)
+            #self.yolo_result_class = pred_class.item()
+            #self.cnn_result_description = self.describe_by_class[pred_class.item()]
+
+                    # Crop image
+                    crop_img = local_img[y1:y2, x1:x2]
+
+                    # Save results
+                    bbox_lst.append(sign_bbox)
+                    crop_lst.append(crop_img)
+
+            # Return dict for making response
         return {
-            "signs_classes": self.yolo_result_class,
-            "signs_pred_confidence": self.yolo_result_conf,
-            "signs_bboxes": self.yolo_result_bbox,
+            "signs_bboxes": bbox_lst,
+            "crop_image": crop_lst
         }
-
 
     def to_redis(self) -> Dict[str, Union[str, int]]:
         """
