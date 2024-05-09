@@ -296,18 +296,28 @@ def detect_sign(
     #logging.info(f"Classification results, confidence: {result[0].boxes.conf}")
     #logging.info(f"Classification results, bboxes: {result[0].boxes.data}")
 
-    # Return an image
-    with io.BytesIO() as buf:
-        iio.imwrite(buf, detections['crop_image'][0], plugin="pillow", format="JPEG")
-        im_bytes = buf.getvalue()
-        
-    headers = {'Content-Disposition': 'inline; filename="test.jpeg"'}
+    predicted_class = []
 
+    for crop_img in detections['crop_image']:
+        # Process an image from np.array to bytes
+        with io.BytesIO() as buf:
+            iio.imwrite(buf, crop_img, plugin="pillow", format="JPEG")
+            im_bytes = buf.getvalue()
+            
+        #headers = {'Content-Disposition': 'inline; filename="test.jpeg"'}
+
+        detected_sign = CroppedSign(
+            img=im_bytes,
+            filename=file_img.filename
+    )
+
+        classify = getattr(detected_sign, f"classify_cnn")
+        predicted_class.append(classify(getattr(MODELS, f"cnn_model")))
     # Write to redis history
     try:
         redis_conn.xadd(
             "predictions:history",
-            sign.to_redis()
+            detected_sign.to_redis()
         )
         logging.info("Successfully added entry to the 'prediction:history'.")
         logging.info(f"Stream length: {redis_conn.xlen('predictions:history')}")
@@ -315,7 +325,8 @@ def detect_sign(
         logging.error(f"An error occured during redis transaction: {e}")
 
     #return FileResponse(detections['crop_image'])
-    return Response(im_bytes, headers=headers, media_type='image/jpeg')
+    #return Response(im_bytes, headers=headers, media_type='image/jpeg')
+    return predicted_class
 
 
 # if __name__ == "__main__":
