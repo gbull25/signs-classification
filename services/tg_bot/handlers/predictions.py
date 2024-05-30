@@ -2,9 +2,9 @@ import logging
 from io import BytesIO
 
 import aioredis
+import emoji
 import numpy as np
 import requests
-import emoji
 from aiogram import Bot, F, Router, types
 from aiogram.types import InputMediaPhoto, Message
 from requests.exceptions import ConnectionError
@@ -26,9 +26,6 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
         model = "cnn"
         await redis.set(user_id, "cnn")
 
-    # aiohttp WIP
-    # request_data = aiohttp.FormData()
-
     for i, msg in enumerate(album):
         if msg.photo:
 
@@ -38,12 +35,6 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
             io = BytesIO()
             await bot.download(msg.photo[-1], destination=io)
             im = io.getvalue()
-
-            # aiohttp WIP
-            # request_data.add_field('file',
-            #    im,
-            #    filename=f'file_{i}',
-            #    content_type='image/png')
 
             try:
 
@@ -60,12 +51,6 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
                 logging.error(f"Connection refused error: {ce}")
                 await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
                 return
-
-    # aiohttp WIP
-    # async with aiohttp.ClientSession() as session:
-    #     res = await session.post("http://sign_classifier:80/predict/signs_cnn", data=request_data)
-
-    # await message.answer(res.status)
 
     # Возвращаем альбом для удобства чтения результатов классификации
     await message.answer_media_group(media_group)
