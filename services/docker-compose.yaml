@@ -28,6 +28,7 @@ services:
     volumes:
       - ./sign_classifier/models:/models
       - ./sign_classifier/app:/code/app
+      - ./video:/code/video
     depends_on:
       - redis
     healthcheck:
@@ -36,6 +37,13 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 0
+              capabilities: [gpu]
 
   tg_bot:
     image: gbull25/tg_bot:latest
@@ -45,3 +53,4 @@ services:
         condition: service_healthy
     volumes:
     - ./tg_bot:/bot
+    - ./video:/bot/video

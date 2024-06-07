@@ -6,7 +6,8 @@ import emoji
 import numpy as np
 import requests
 from aiogram import Bot, F, Router, types
-from aiogram.types import InputMediaPhoto, Message
+from aiogram.types import InputMediaPhoto, InputMediaVideo, Message, BufferedInputFile, FSInputFile
+from aiogram.methods.send_video import SendVideo
 from requests.exceptions import ConnectionError
 
 router = Router()
@@ -133,3 +134,39 @@ async def current_rating(message: types.Message):
         return
 
     await message.reply(int(np.floor(scale["data"])) * emoji.emojize(":star:"))
+
+
+# Хэндлер на видео
+@router.message(F.video)
+async def predict_video(message: Message, bot: Bot):
+    io = BytesIO()
+    io = await bot.download(message.video, destination=io)
+    im = io.getvalue()
+
+    redis = await aioredis.from_url("redis://redis:5370")
+    user_id = message.from_user.id
+    model = await redis.get("user_id")
+    if model == None:
+        model = "cnn"
+        await redis.set(user_id, "cnn")   
+
+    try:
+
+        response = requests.post(
+                    "http://sign_classifier:80/detect_sign_video",
+                    files={'file_video': im}
+        ).json()
+        logging.info(f"Received a response with prediciton: {response}")
+
+    except ConnectionError as ce:
+
+        logging.error(f"Connection refused error: {ce}")
+        await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
+        return
+
+    #ann_vid =  BufferedInputFile(file=response, filename="video.avi")
+    cat = FSInputFile(response['path'])
+    #await message.reply(response['path'])
+    #await message.reply(type(response))
+    #await bot.send_video(chat_id=message.chat.id, video=cat)
+    await message.answer_video(cat)
