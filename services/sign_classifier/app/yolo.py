@@ -15,6 +15,14 @@ from torchvision.transforms.v2 import Compose, Resize, ToTensor
 class YOLO_detect():
     def __init__(self):
         pass
+    
+    def process_photo(self, video_name, yolo_model):
+        """
+        
+        """
+        detections = yolo_model(video_name, save=True, project='./video', conf=0.51)
+
+        return 'Success'
 
     def process_video(self, video_name, yolo_model):
         """
@@ -25,7 +33,7 @@ class YOLO_detect():
         #local_img = np.array(Image.open(io.BytesIO(self.img)).convert('RGB'))
 
         # Predict 
-        detections = yolo_model.track(video_name, stream=True, save=True, project='./video', conf=0.51)
+        detections = yolo_model.track(video_name, stream=True, save=True, name='', project='./video', conf=0.51)
 
         self.yolo_detection_result = []
         bbox_lst = []
