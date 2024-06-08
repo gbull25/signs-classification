@@ -1,6 +1,9 @@
 import base64
 import io
 import logging
+import csv
+import pathlib
+import time
 from copy import deepcopy
 from typing import Dict, Union
 
@@ -14,56 +17,69 @@ from torchvision.transforms.v2 import Compose, Resize, ToTensor
 
 class CroppedSign():
 
-    describe_by_class = {
-        0: 'Speed Limit 20 kmph',
-        1: 'Speed Limit 30 kmph',
-        2: 'Speed Limit 50 kmph',
-        3: 'Speed Limit 60 kmph',
-        4: 'Speed Limit 70 kmph',
-        5: 'Speed Limit 80 kmph',
-        6: 'End of Speed Limit 80 kmph',
-        7: 'Speed Limit 100 kmph',
-        8: 'Speed Limit 120 kmph',
-        9: 'No Passing',
-        10: 'No Passing vehicle over 3,5 ton',
-        11: 'Right of way at intersection',
-        12: 'Priority road',
-        13: 'Yield',
-        14: 'Stop',
-        15: 'No vehicles',
-        16: 'Veh over 3,5 tons prohibited',
-        17: 'No entry',
-        18: 'General caution',
-        19: 'Dangerous curve left',
-        20: 'Dangerous curve right',
-        21: 'Double curve',
-        22: 'Bumpy road',
-        23: 'Slippery road',
-        24: 'Road narrows on the right',
-        25: 'Road work',
-        26: 'Traffic signals',
-        27: 'Pedestrians',
-        28: 'Children crossing',
-        29: 'Bicycles crossing',
-        30: 'Beware of ice or snow',
-        31: 'Wild animals crossing',
-        32: 'End speed and passing limits',
-        33: 'Turn right ahead',
-        34: 'Turn left ahead',
-        35: 'Ahead only',
-        36: 'Go straight or right',
-        37: 'Go straight or left',
-        38: 'Keep right',
-        39: 'Keep left',
-        40: 'Roundabout mandatory',
-        41: 'End of no passing',
-        42: 'End no passing vehicle over 3,5 tons'
-    }
+    # describe_by_class = {
+    #     0: 'Speed Limit 20 kmph',
+    #     1: 'Speed Limit 30 kmph',
+    #     2: 'Speed Limit 50 kmph',
+    #     3: 'Speed Limit 60 kmph',
+    #     4: 'Speed Limit 70 kmph',
+    #     5: 'Speed Limit 80 kmph',
+    #     6: 'End of Speed Limit 80 kmph',
+    #     7: 'Speed Limit 100 kmph',
+    #     8: 'Speed Limit 120 kmph',
+    #     9: 'No Passing',
+    #     10: 'No Passing vehicle over 3,5 ton',
+    #     11: 'Right of way at intersection',
+    #     12: 'Priority road',
+    #     13: 'Yield',
+    #     14: 'Stop',
+    #     15: 'No vehicles',
+    #     16: 'Veh over 3,5 tons prohibited',
+    #     17: 'No entry',
+    #     18: 'General caution',
+    #     19: 'Dangerous curve left',
+    #     20: 'Dangerous curve right',
+    #     21: 'Double curve',
+    #     22: 'Bumpy road',
+    #     23: 'Slippery road',
+    #     24: 'Road narrows on the right',
+    #     25: 'Road work',
+    #     26: 'Traffic signals',
+    #     27: 'Pedestrians',
+    #     28: 'Children crossing',
+    #     29: 'Bicycles crossing',
+    #     30: 'Beware of ice or snow',
+    #     31: 'Wild animals crossing',
+    #     32: 'End speed and passing limits',
+    #     33: 'Turn right ahead',
+    #     34: 'Turn left ahead',
+    #     35: 'Ahead only',
+    #     36: 'Go straight or right',
+    #     37: 'Go straight or left',
+    #     38: 'Keep right',
+    #     39: 'Keep left',
+    #     40: 'Roundabout mandatory',
+    #     41: 'End of no passing',
+    #     42: 'End no passing vehicle over 3,5 tons'
+    # }
+    describe_by_class = {}
+
+    with open("app/numbers_to_classes.csv", "r") as f:
+        reader = csv.reader(f)
+        next(reader)
+        for row in reader:
+            describe_by_class[int(row[0])] = row[1]
 
     def __init__(
             self,
+            user_id: int,
+            source_filepath: str | pathlib.Path,
             img: bytes,
-            filename: str,
+            bbox: str | None = None,
+            id: int | None = None,
+            frame_number: int = 1,
+            detection_speed: float = 0,
+            classification_speed: float = 0,
             hog_result_class: int | None = None,
             hog_result_description: str | None = None,
             sift_result_class: int | None = None,
@@ -72,14 +88,34 @@ class CroppedSign():
             cnn_result_description: str | None = None,
             ):
 
+        self.user_id = user_id
+        if isinstance(source_filepath, str):
+            self.source_filepath = pathlib.Path(source_filepath)
+        else:
+            self.source_filepath = source_filepath
         self.img = img
-        self.filename = filename
+        self.bbox = bbox
+        self.id = id
+        self.frame_number = frame_number
+        self.detection_speed = detection_speed
+        self.classification_speed = classification_speed
+
+
         self.hog_result_class = hog_result_class
         self.hog_result_description = hog_result_description
         self.sift_result_class = sift_result_class
         self.sift_result_description = sift_result_description
         self.cnn_result_class = cnn_result_class
         self.cnn_result_description = cnn_result_description
+
+    def timer(func):
+        def wrapper(self, *arg, **kw):
+            t1 = time.time()
+            res = func(self, *arg, **kw)
+            t2 = time.time()
+            self.classification_speed = (t2 - t1)
+            return res
+        return wrapper
 
     def preprocess_for_sift(self, img_shape=(32, 32)):
         """
@@ -180,6 +216,7 @@ class CroppedSign():
             "model_used": "cnn_model"
         }
 
+    @timer
     def classify_cnn(self, cnn_model):
         """
         Classify cropped sign image with CNN model.
@@ -221,47 +258,6 @@ class CroppedSign():
             "model_used": "cnn_model"
         }
 
-    def detect_yolo(self, yolo_model):
-        """
-        
-        """
-
-        # Read image
-        local_img = np.array(Image.open(io.BytesIO(self.img)).convert('RGB'))
-
-        # Predict 
-        detections = yolo_model(local_img, conf=0.1)
-
-        self.yolo_detection_result = []
-        # Read result object for every image
-        for input in detections:
-            self.yolo_detection_result.append(input)
-        
-            # Image name
-            img_name = input.path.split('/')[-1]
-
-            bbox_lst = []
-            crop_lst = []
-
-            # Read bboxes  
-            for sign_bbox in input.boxes.xyxy.tolist():
-                    x1, y1, x2, y2 = map(int, sign_bbox)
-            #self.yolo_result_class = pred_class.item()
-            #self.cnn_result_description = self.describe_by_class[pred_class.item()]
-
-                    # Crop image
-                    crop_img = local_img[y1:y2, x1:x2]
-
-                    # Save results
-                    bbox_lst.append(sign_bbox)
-                    crop_lst.append(crop_img)
-
-            # Return dict for making response
-        return {
-            "signs_bboxes": bbox_lst,
-            "crop_image": crop_lst
-        }
-
     def to_redis(self) -> Dict[str, Union[str, int]]:
         """
         Make modified dict of the self attributes to store in redis.
@@ -269,6 +265,11 @@ class CroppedSign():
         res = {}
 
         for key, val in self.__dict__.items():
+            logging.error(f"FORMING REDIS MSG:")
+            logging.error(f"{key}: {val}")
+            if key == "source_filepath":
+                res[key] = str(val)
+                continue
             if key == "img":
                 res[key] = val
                 continue

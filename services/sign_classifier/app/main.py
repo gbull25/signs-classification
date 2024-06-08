@@ -1,4 +1,8 @@
 import logging
+import pathlib
+import shutil
+import uuid
+from tempfile import NamedTemporaryFile
 from typing import Dict, List, Union
 
 import redis
@@ -17,6 +21,7 @@ from .model_loader import ModelLoader
 from .pages.router import router as router_pages
 from .rating.router import router as router_rating
 from .utils import pool
+from .fistashka import Fistashka
 
 # from fastapi_cache import FastAPICache
 # from fastapi_cache.backends.redis import RedisBackend
@@ -46,6 +51,11 @@ class DetectionResult(BaseModel):
 def get_redis():
     """Get redis connection."""
     return redis.Redis(connection_pool=pool)
+
+
+def make_user_id():
+    """Generate unique user id"""
+    return str(uuid.uuid4())
 
 
 # load models as global var
@@ -223,11 +233,13 @@ def classify_sign(
 
     # Define CroppedSign instance
     sign = CroppedSign(
-        img=byte_img,
+        img= byte_img,
+        id = 0,
         filename=file_img.filename
     )
 
     # Access attribute depending on passed model name
+    model_name = "cnn"
     classify = getattr(sign, f"classify_{model_name}")
     # TODO: fix this mess
     if model_name == 'sift':
@@ -258,10 +270,10 @@ def classify_sign(
     )
 def detect_sign(
     request: Request,
-    file_img: UploadFile,
-    model_name: str = 'yolo',
+    file_data: UploadFile,
+    user_id="0",
     redis_conn=Depends(get_redis)
-        ):
+        ) -> List[ClassificationResult]:
     """Classify which sign is in the image.
 
     Args:
@@ -272,61 +284,66 @@ def detect_sign(
     Returns:
         - DetectionResult: the result of the detection.
     """
+    if user_id == "0":
+        user_id = make_user_id()
     logging.info(f"Request received; host: {request.client.host}; "
-                 f"filename: {file_img.filename}, content_type: {file_img.content_type}")
+                 f"filename: {file_data.filename}, content_type: {file_data.content_type}")
 
-    # Read file
+    # Copy file to named tmp file
+    # https://stackoverflow.com/a/63581187
+    suffix = pathlib.Path(file_data.filename).suffix
     try:
-        byte_img = file_img.file.read()
+        with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            shutil.copyfileobj(file_data.file, tmp)
+            tmp_path = pathlib.Path(tmp.name)
     except Exception as e:
-        logging.error(f"Unexpected error while reading uploaded file:\n\n {e}")
+        logging.error(f"Unexpected error while managing uploaded file:\n\n {e}")
         return ClassificationResult(message="Unexpected error while reading uploaded file")
+    finally:
+        file_data.file.close()
     
-    # Define CroppedSign instance
-    sign = CroppedSign(
-        img=byte_img,
-        filename=file_img.filename
-    )
+    data = Fistashka(tmp_path, user_id, MODELS.yolo_model)
+    data.detect()
+    classification_results = []
 
-    detect = getattr(sign, f"detect_{model_name}")
-    detections = detect(getattr(MODELS, f"{model_name}_model"))
-    #logging.info(f"Prediction results: {sign_boxes}")
-    #result = MODELS.yolo_model.predict(byte_img, conf=0.1)
-    #logging.info(f"Classification results, classes: {result[0].boxes.cls}")
-    #logging.info(f"Classification results, confidence: {result[0].boxes.conf}")
-    #logging.info(f"Classification results, bboxes: {result[0].boxes.data}")
-
-    predicted_class = []
-
-    for crop_img in detections['crop_image']:
-        # Process an image from np.array to bytes
-        with io.BytesIO() as buf:
-            iio.imwrite(buf, crop_img, plugin="pillow", format="JPEG")
-            im_bytes = buf.getvalue()
-            
-        #headers = {'Content-Disposition': 'inline; filename="test.jpeg"'}
-
-        detected_sign = CroppedSign(
-            img=im_bytes,
-            filename=file_img.filename
-    )
-
-        classify = getattr(detected_sign, f"classify_cnn")
-        predicted_class.append(classify(getattr(MODELS, f"cnn_model")))
-    # Write to redis history
-    try:
-        redis_conn.xadd(
-            "predictions:history",
-            detected_sign.to_redis()
+    # # Generate cropped_signs from detected objects
+    
+    for id, obj in data.stream_objects():
+        sign = CroppedSign(
+            user_id=user_id,
+            source_filepath=obj["file_path"],
+            img=obj["cropped_img"],
+            bbox=obj["bbox"],
+            id=id,
+            frame_number=obj["frame_number"],
+            detection_speed=obj["detection_speed"]
+            # filename=obj["filename"]
         )
-        logging.info("Successfully added entry to the 'prediction:history'.")
-        logging.info(f"Stream length: {redis_conn.xlen('predictions:history')}")
-    except Exception as e:
-        logging.error(f"An error occured during redis transaction: {e}")
+        # Classify sign using cnn
+        predicted_class = sign.classify_cnn(MODELS.cnn_model)
+        logging.error(f"{vars(sign)}")
+        logging.info(f"Prediction results: {predicted_class}")
 
-    #return FileResponse(detections['crop_image'])
-    #return Response(im_bytes, headers=headers, media_type='image/jpeg')
-    return predicted_class
+        res = ClassificationResult(
+            message="Success",
+            **predicted_class
+        )
+
+        classification_results.append(res)
+
+        # Write to redis history
+        try:
+            redis_conn.xadd(
+                "predictions:history",
+                sign.to_redis()
+            )
+            logging.info("Successfully added entry to the 'prediction:history'.")
+            logging.info(f"Stream length: {redis_conn.xlen('predictions:history')}")
+        except Exception as e:
+            logging.error(f"An error occured during redis transaction: {e}")
+
+    return classification_results
+    return None
 
 
 # if __name__ == "__main__":

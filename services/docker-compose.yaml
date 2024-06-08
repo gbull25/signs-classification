@@ -28,6 +28,7 @@ services:
     volumes:
       - ./sign_classifier/models:/models
       - ./sign_classifier/app:/code/app
+      - ./user_data:/user_data
     depends_on:
       - redis
     healthcheck:

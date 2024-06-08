@@ -1,18 +1,16 @@
-# Virtual enviroment
+# virtual enviroment
 **venv/
-#**env/
-#.env
+**/.env
 .venv
 
-# Python & Jupyter
+# python & Jupyter
 **/__pycache__/
 **/.ipynb_checkpoints/
 
-# Dataset folder
+# dataset folder
 data/
 
 # first iteration code
-
 experiments/
 services/fastapi/
 services/model/
@@ -21,14 +19,11 @@ services/model/
 render_requirements.txt
 
 # etc_stuff
-
 **coverage
 **Train_HOG_03-12-23.npy
 
-
 # intellij configs
 .idea/
-
 
 # Distribution / packaging
 .Python
@@ -49,8 +44,11 @@ share/python-wheels/
 .installed.cfg
 *.egg
 
-# Models
+# models
 **kmeans.gz
 **sift_svm.gz
 **lzma_hog_proba.xz
-#**cnn_torch.pt
+**/*.pt
+
+# other
+**/user_data
