@@ -44,10 +44,17 @@ from fastapi import Response
 
 class ClassificationResult(BaseModel):
     """Classification result validation model."""
-    sign_class: int | None = None
+    user_id: int = 0
+    source_type: str | None = None
+    result_file_path: str | None = None
+    detection_id: str | None = None
+    detection_conf: float = 0.0
+    sign_class: str | None = None
     sign_description: str | None = None
-    annotated_file_path: str | None
-    message: str = "No prediction was made"
+    bbox: str | None = None
+    frame_num: int = 0
+    detection_speed: float = 0.0
+    model_used: str = "No prediction was made"
 
 
 class DetectionResult(BaseModel):

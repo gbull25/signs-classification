@@ -253,9 +253,16 @@ class CroppedSign():
 
         # Return dict for making response
         return {
+            "user_id": self.user_id,
+            "source_type": self.source_filepath.split('.')[-1],
+            "result_file_path": self.source_filepath,
+            "detection_id": self.id,
+            "detection_conf": 0,
             "sign_class": self.cnn_result_class,
             "sign_description": self.cnn_result_description,
-            "annotated_file_path": self.source_filepath,
+            "bbox": self.bbox,
+            "frame_num": self.frame_number,
+            "detection_speed": self.detection_speed,
             "model_used": "cnn_model"
         }
 
