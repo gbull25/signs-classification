@@ -21,12 +21,14 @@ services:
       - ./sign_classifier/app/auth/.env
 
   sign_classifier:
+    image: gbull25/sign_classifier:latest
     build: sign_classifier
     ports: 
       - "80:80"
     volumes:
       - ./sign_classifier/models:/models
       - ./sign_classifier/app:/code/app
+      - ./user_data:/user_data
     depends_on:
       - redis
     healthcheck:
@@ -35,11 +37,20 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 0
+    #           capabilities: [gpu]
 
   tg_bot:
+    image: gbull25/tg_bot:latest
     build: tg_bot
     depends_on:
       sign_classifier:
         condition: service_healthy
     volumes:
     - ./tg_bot:/bot
+    - ./user_data:/user_data

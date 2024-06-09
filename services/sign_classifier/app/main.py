@@ -1,24 +1,41 @@
 import logging
+import pathlib
+import shutil
+import uuid
+from tempfile import NamedTemporaryFile
 from typing import Dict, List, Union
 
 import redis
-from fastapi import Depends, FastAPI, Request, UploadFile
+import torch
+import aiofiles
+import asyncio
+import os
+import shutil
+from fastapi import Depends, FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
+from tempfile import NamedTemporaryFile
+from fastapi.concurrency import run_in_threadpool
 
 from .auth.base_config import auth_backend, fastapi_users
 from .auth.router import router as role_adding_router
 from .auth.schemas import UserCreate, UserRead
 from .cropped_sign import CroppedSign
+from .yolo import YOLO_detect
 from .model_loader import ModelLoader
 from .pages.router import router as router_pages
 from .rating.router import router as router_rating
 from .utils import pool
+from .fistashka import Fistashka
 
 # from fastapi_cache import FastAPICache
 # from fastapi_cache.backends.redis import RedisBackend
-
+import io
+import imageio
+from imageio import v3 as iio
+from fastapi import Response
 
 # ---------------------------------------------------------------------------- #
 #                       CLASSES, FUNCTIONS, GLOBAL VARS.                       #
@@ -29,12 +46,24 @@ class ClassificationResult(BaseModel):
     """Classification result validation model."""
     sign_class: int | None = None
     sign_description: str | None = None
+    annotated_file_path: str | None
     message: str = "No prediction was made"
+
+
+class DetectionResult(BaseModel):
+    """Classification result validation model."""
+    signs_bboxes:  List | None = None
+    #message: str = "No prediction was made"
 
 
 def get_redis():
     """Get redis connection."""
     return redis.Redis(connection_pool=pool)
+
+
+def make_user_id():
+    """Generate unique user id"""
+    return str(uuid.uuid4())
 
 
 # load models as global var
@@ -47,7 +76,7 @@ MODELS = ModelLoader()
 
 
 app = FastAPI(
-    # lifespan=lifespan,
+    # lifespaModelLoadern=lifespan,
     title="Predict the class of a sign",
     version="1.0",
     contact={
@@ -212,11 +241,13 @@ def classify_sign(
 
     # Define CroppedSign instance
     sign = CroppedSign(
-        img=byte_img,
+        img= byte_img,
+        id = 0,
         filename=file_img.filename
     )
 
     # Access attribute depending on passed model name
+    model_name = "cnn"
     classify = getattr(sign, f"classify_{model_name}")
     # TODO: fix this mess
     if model_name == 'sift':
@@ -240,6 +271,190 @@ def classify_sign(
         message="Success",
         **predicted_class
     )
+
+
+@app.post(
+    "/detect_and_classify_signs"
+    )
+def detect_and_classify_signs(
+    request: Request,
+    file_data: UploadFile,
+    suffix: str = "_",
+    user_id="0",
+    redis_conn=Depends(get_redis)
+        ) -> List[ClassificationResult]:
+    """Classify which sign is in the image.
+
+    Args:
+        - request: http request;
+        - file_img: uploaded image of the sign;
+        - model_name: name of the model to use for detection.
+
+    Returns:
+        - DetectionResult: the result of the detection.
+    """
+    if user_id == "0":
+        user_id = make_user_id()
+    logging.info(f"Request received; host: {request.client.host}; "
+                 f"filename: {file_data.filename}, content_type: {file_data.content_type}")
+
+    # Copy file to named tmp file
+    # https://stackoverflow.com/a/63581187
+    if suffix == "_":
+       suffix = pathlib.Path(file_data.filename).suffix
+    logging.error(f"{user_id}")
+    logging.error(f"{suffix}")
+    logging.error(f"{file_data.filename}")
+    try:
+        with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            shutil.copyfileobj(file_data.file, tmp)
+            tmp_path = pathlib.Path(tmp.name)
+    except Exception as e:
+        logging.error(f"Unexpected error while managing uploaded file:\n\n {e}")
+        return ClassificationResult(message="Unexpected error while reading uploaded file")
+    finally:
+        file_data.file.close()
+    
+    data = Fistashka(tmp_path, user_id, MODELS.yolo_model)
+    data.detect()
+    classification_results = []
+
+    # # Generate cropped_signs from detected objects
+    
+    for id, obj in data.stream_objects():
+        sign = CroppedSign(
+            user_id=user_id,
+            source_filepath=obj["file_path"],
+            img=obj["cropped_img"],
+            bbox=obj["bbox"],
+            id=id,
+            frame_number=obj["frame_number"],
+            detection_speed=obj["detection_speed"]
+            # filename=obj["filename"]
+        )
+        # Classify sign using cnn
+        predicted_class = sign.classify_cnn(MODELS.cnn_model)
+        logging.error(f"{vars(sign)}")
+        logging.info(f"Prediction results: {predicted_class}")
+
+        res = ClassificationResult(
+            message="Success",
+            **predicted_class
+        )
+
+        classification_results.append(res)
+
+        # Write to redis history
+        try:
+            redis_conn.xadd(
+                "predictions:history",
+                sign.to_redis()
+            )
+            logging.info("Successfully added entry to the 'prediction:history'.")
+            logging.info(f"Stream length: {redis_conn.xlen('predictions:history')}")
+        except Exception as e:
+            logging.error(f"An error occured during redis transaction: {e}")
+
+    return classification_results
+
+
+
+
+@app.post(
+    "/detect_sign_video"
+    )
+async def detect_sign_video(
+    request: Request,
+    file_video: UploadFile,
+    model_name: str = 'yolo',
+    redis_conn=Depends(get_redis)
+        ):
+
+
+    try:
+        shutil.rmtree('./video/track/')
+    except OSError as e:
+        # If it fails, inform the user.
+        print("Error: %s - %s." % (e.filename, e.strerror))
+
+    temp = NamedTemporaryFile(delete=False, suffix='.avi')
+
+    #try:
+    contents = file_video.file.read()
+    with temp as f:
+        f.write(contents)
+    #except Exception:
+    #    return {"message": "There was an error uploading the file"}
+    #finally:
+    file_video.file.close()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f'Using device: {device}')
+    res = YOLO_detect().process_video(temp.name, MODELS.yolo_model)  # Pass temp.name to VideoCapture()
+    #except Exception:
+    #    return {"message": "There was an error processing the file"}
+    #finally:
+        #temp.close()  # the `with` statement above takes care of closing the file
+
+    file_path = "./video/track/" + temp.name[5:]
+    #file_path_mp4 = file_path[:-3] + 'mp4'
+
+    #os.rename(file_path, file_path_mp4)
+    os.remove(temp.name)
+
+    #return FileResponse(path=file_path,filename=file_path, media_type="video/avi")       
+    return {'path': file_path}
+
+@app.post(
+    "/detect_sign_photo"
+    )
+async def detect_sign_photo(
+    request: Request,
+    file_photo: UploadFile,
+    model_name: str = 'yolo',
+    redis_conn=Depends(get_redis)
+        ):
+
+
+    #try:
+    #    shutil.rmtree('./video/predict/')
+    #except OSError as e:
+    #    # If it fails, inform the user.
+    #    print("Error: %s - %s." % (e.filename, e.strerror))
+
+    temp = NamedTemporaryFile(delete=False, suffix='.jpg')
+
+    #try:
+    contents = file_photo.file.read()
+    with temp as f:
+        f.write(contents)
+
+    file_photo.file.close()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f'Using device: {device}')
+    res = YOLO_detect().process_photo(temp.name, MODELS.yolo_model)  # Pass temp.name to VideoCapture()
+
+
+    file_path = "./video/predict/" + temp.name[5:]
+    #file_path_mp4 = file_path[:-3] + 'mp4'
+
+    #os.rename(file_path, file_path_mp4)
+    os.remove(temp.name)
+
+    #return FileResponse(path=file_path,filename=file_path, media_type="video/avi")       
+    return {'path': file_path}
+
+
+@app.get(
+    "/get_annotated_video"
+    )
+async def get_annotated_video(
+    video_name: str
+        ):
+    file_path = "./result/track/" + video_name
+
+
+    return FileResponse(path=file_path,filename=file_path, media_type="video/avi")
+
 
 
 # if __name__ == "__main__":
