@@ -1,7 +1,7 @@
 import base64
+import csv
 import io
 import logging
-import csv
 import pathlib
 import time
 from copy import deepcopy
@@ -254,14 +254,13 @@ class CroppedSign():
         # Return dict for making response
         return {
             "user_id": self.user_id,
-            "source_type": self.source_filepath.split('.')[-1],
-            "result_file_path": self.source_filepath,
+            "result_filepath": self.source_filepath,
             "detection_id": self.id,
             "detection_conf": 0,
-            "sign_class": self.cnn_result_class,
+            "sign_class": int(self.cnn_result_class),
             "sign_description": self.cnn_result_description,
             "bbox": self.bbox,
-            "frame_num": self.frame_number,
+            "frame_number": self.frame_number,
             "detection_speed": self.detection_speed,
             "model_used": "cnn_model"
         }

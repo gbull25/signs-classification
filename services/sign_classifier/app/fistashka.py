@@ -1,12 +1,13 @@
 import io
-import cv2
-import numpy as np
-from PIL import Image
 import logging
-from . import settings
 import pathlib
 import time
 
+import cv2
+import numpy as np
+from PIL import Image
+
+from . import settings
 
 
 class Fistashka():
@@ -34,7 +35,7 @@ class Fistashka():
                 # Add msg that no signs was detected
                 continue
             self.detection_result.append(detection)
-            self._process_detection(frame_number, detection)
+            self._process_detection(frame_number+1, detection)
             
     def _process_detection(self, frame_number, detection):
         orig_image = detection.orig_img
@@ -42,7 +43,7 @@ class Fistashka():
             # Somehow there can be no id (id=None)
             logging.error(f"{obj.boxes.id}")
             if obj.boxes.id:
-                id = obj.boxes.id.item()
+                id = int(obj.boxes.id.item())
             else:
                 continue
             x1, y1, x2, y2 = map(int, obj.boxes.xyxy.tolist()[0])

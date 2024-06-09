@@ -6,36 +6,28 @@ from tempfile import NamedTemporaryFile
 from typing import Dict, List, Union
 
 import redis
-import torch
-import aiofiles
-import asyncio
-import os
-import shutil
-from fastapi import Depends, FastAPI, Request, UploadFile, File
+from fastapi import Depends, FastAPI, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import FileResponse, StreamingResponse
+from imageio import v3 as iio
 from pydantic import BaseModel
-from tempfile import NamedTemporaryFile
-from fastapi.concurrency import run_in_threadpool
+from sqlalchemy.dialects.postgresql import insert
 
 from .auth.base_config import auth_backend, fastapi_users
+from .auth.database import get_async_session
+from .auth.models import results
 from .auth.router import router as role_adding_router
 from .auth.schemas import UserCreate, UserRead
 from .cropped_sign import CroppedSign
-from .yolo import YOLO_detect
+from .fistashka import Fistashka
 from .model_loader import ModelLoader
 from .pages.router import router as router_pages
 from .rating.router import router as router_rating
 from .utils import pool
-from .fistashka import Fistashka
 
 # from fastapi_cache import FastAPICache
 # from fastapi_cache.backends.redis import RedisBackend
-import io
-import imageio
-from imageio import v3 as iio
-from fastapi import Response
+
 
 # ---------------------------------------------------------------------------- #
 #                       CLASSES, FUNCTIONS, GLOBAL VARS.                       #
@@ -44,17 +36,16 @@ from fastapi import Response
 
 class ClassificationResult(BaseModel):
     """Classification result validation model."""
-    user_id: int = 0
-    source_type: str | None = None
-    result_file_path: str | None = None
-    detection_id: str | None = None
+    user_id: str = "0"
+    result_filepath: str | None = None
+    detection_id: int | None = None
     detection_conf: float = 0.0
-    sign_class: str | None = None
+    sign_class: int | None = None
     sign_description: str | None = None
     bbox: str | None = None
-    frame_num: int = 0
+    frame_number: int = 1
     detection_speed: float = 0.0
-    model_used: str = "No prediction was made"
+    model_used: str = "cnn"
 
 
 class DetectionResult(BaseModel):
@@ -71,6 +62,15 @@ def get_redis():
 def make_user_id():
     """Generate unique user id"""
     return str(uuid.uuid4())
+
+
+async def write_results(classification_result: ClassificationResult, session):
+    insert_stmt = insert(results).values(**classification_result.dict())
+    do_update_stmt = insert_stmt.on_conflict_do_nothing(index_elements=["id"])
+
+    await session.execute(do_update_stmt)
+    await session.commit()
+    return {"status": "success"}
 
 
 # load models as global var
@@ -283,12 +283,13 @@ def classify_sign(
 @app.post(
     "/detect_and_classify_signs"
     )
-def detect_and_classify_signs(
+async def detect_and_classify_signs(
     request: Request,
     file_data: UploadFile,
     suffix: str = "_",
     user_id="0",
-    redis_conn=Depends(get_redis)
+    redis_conn=Depends(get_redis),
+    postgres_session=Depends(get_async_session)
         ) -> List[ClassificationResult]:
     """Classify which sign is in the image.
 
@@ -344,11 +345,8 @@ def detect_and_classify_signs(
         logging.error(f"{vars(sign)}")
         logging.info(f"Prediction results: {predicted_class}")
 
-        res = ClassificationResult(
-            message="Success",
-            **predicted_class
-        )
-
+        res = ClassificationResult(**predicted_class)
+        await write_results(res, postgres_session)
         classification_results.append(res)
 
         # Write to redis history
