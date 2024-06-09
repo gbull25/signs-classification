@@ -4,7 +4,7 @@ from alembic import context
 from auth.config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
 from auth.database import Base, metadata
 
-# from auth.models import *
+from auth.models import *
 from sqlalchemy import engine_from_config, pool
 
 # sys.path.append(os.path.join(sys.path[0], 'app'))

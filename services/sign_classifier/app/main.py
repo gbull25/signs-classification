@@ -1,19 +1,28 @@
 import logging
+import pathlib
+import shutil
+import uuid
+from tempfile import NamedTemporaryFile
 from typing import Dict, List, Union
 
 import redis
-from fastapi import Depends, FastAPI, Request, UploadFile
+from fastapi import Depends, FastAPI, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
+from imageio import v3 as iio
 from pydantic import BaseModel
+from sqlalchemy.dialects.postgresql import insert
 
 from .auth.base_config import auth_backend, fastapi_users
+from .auth.database import get_async_session
+from .auth.models import results
 from .auth.router import router as role_adding_router
 from .auth.schemas import UserCreate, UserRead
 from .cropped_sign import CroppedSign
 from .model_loader import ModelLoader
 from .pages.router import router as router_pages
 from .rating.router import router as router_rating
+from .sign_detection import SignDetection
 from .utils import pool
 
 # from fastapi_cache import FastAPICache
@@ -27,14 +36,41 @@ from .utils import pool
 
 class ClassificationResult(BaseModel):
     """Classification result validation model."""
+    user_id: str = "0"
+    result_filepath: str | None = None
+    detection_id: int | None = None
+    detection_conf: float = 0.0
     sign_class: int | None = None
     sign_description: str | None = None
-    message: str = "No prediction was made"
+    bbox: str | None = None
+    frame_number: int = 1
+    detection_speed: float = 0.0
+    model_used: str = "cnn"
+
+
+class DetectionResult(BaseModel):
+    """Classification result validation model."""
+    signs_bboxes:  List | None = None
+    #message: str = "No prediction was made"
 
 
 def get_redis():
     """Get redis connection."""
     return redis.Redis(connection_pool=pool)
+
+
+def make_user_id():
+    """Generate unique user id"""
+    return str(uuid.uuid4())
+
+
+async def write_results(classification_result: ClassificationResult, session):
+    insert_stmt = insert(results).values(**classification_result.dict())
+    do_update_stmt = insert_stmt.on_conflict_do_nothing(index_elements=["id"])
+
+    await session.execute(do_update_stmt)
+    await session.commit()
+    return {"status": "success"}
 
 
 # load models as global var
@@ -47,7 +83,7 @@ MODELS = ModelLoader()
 
 
 app = FastAPI(
-    # lifespan=lifespan,
+    # lifespaModelLoadern=lifespan,
     title="Predict the class of a sign",
     version="1.0",
     contact={
@@ -166,7 +202,6 @@ def get_history_pretty(
     """
     try:
         query = redis_conn.xrange("predictions:history", "-", "+", n_entries)
-        logging.debug(f"Query received: {query}")
         logging.info(f"Successfully received history of {len(query)} items")
     except Exception as e:
         logging.info(f"An error occured during redis transaction: {e}")
@@ -212,11 +247,13 @@ def classify_sign(
 
     # Define CroppedSign instance
     sign = CroppedSign(
-        img=byte_img,
+        img= byte_img,
+        id = 0,
         filename=file_img.filename
     )
 
     # Access attribute depending on passed model name
+    model_name = "cnn"
     classify = getattr(sign, f"classify_{model_name}")
     # TODO: fix this mess
     if model_name == 'sift':
@@ -240,6 +277,86 @@ def classify_sign(
         message="Success",
         **predicted_class
     )
+
+
+@app.post(
+    "/detect_and_classify_signs"
+    )
+async def detect_and_classify_signs(
+    request: Request,
+    file_data: UploadFile,
+    suffix: str = "_",
+    user_id="0",
+    redis_conn=Depends(get_redis),
+    postgres_session=Depends(get_async_session)
+        ) -> List[ClassificationResult]:
+    """Classify which sign is in the image.
+
+    Args:
+        - request: http request;
+        - file_img: uploaded image of the sign;
+        - model_name: name of the model to use for detection.
+
+    Returns:
+        - DetectionResult: the result of the detection.
+    """
+    if user_id == "0":
+        user_id = make_user_id()
+    logging.info(f"Request received; host: {request.client.host}; "
+                 f"filename: {file_data.filename}, content_type: {file_data.content_type}")
+
+    # Copy file to named tmp file
+    # https://stackoverflow.com/a/63581187
+    if suffix == "_":
+       suffix = pathlib.Path(file_data.filename).suffix
+
+    try:
+        with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            shutil.copyfileobj(file_data.file, tmp)
+            tmp_path = pathlib.Path(tmp.name)
+    except Exception as e:
+        logging.error(f"Unexpected error while managing uploaded file:\n\n {e}")
+        return ClassificationResult(message="Unexpected error while reading uploaded file")
+    finally:
+        file_data.file.close()
+    
+    data = SignDetection(tmp_path, user_id, MODELS.yolo_model)
+    data.detect()
+    classification_results = []
+
+    # # Generate cropped_signs from detected objects
+    
+    for id, obj in data.stream_objects():
+        sign = CroppedSign(
+            user_id=user_id,
+            source_filepath=obj["file_path"],
+            img=obj["cropped_img"],
+            bbox=obj["bbox"],
+            id=id,
+            frame_number=obj["frame_number"],
+            detection_speed=obj["detection_speed"]
+            # filename=obj["filename"]
+        )
+        # Classify sign using cnn
+        predicted_class = sign.classify_cnn(MODELS.cnn_model)
+        logging.info(f"Prediction results: {predicted_class}")
+
+        res = ClassificationResult(**predicted_class)
+        await write_results(res, postgres_session)
+        classification_results.append(res)
+
+        # Write to redis history
+        try:
+            redis_conn.xadd(
+                "predictions:history",
+                sign.to_redis()
+            )
+            logging.info("Successfully added entry to the 'prediction:history'.")
+            logging.info(f"Stream length: {redis_conn.xlen('predictions:history')}")
+        except Exception as e:
+            logging.error(f"An error occured during redis transaction: {e}")
+
+    return classification_results
 
 
 # if __name__ == "__main__":

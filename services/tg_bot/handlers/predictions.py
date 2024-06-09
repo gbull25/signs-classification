@@ -1,24 +1,41 @@
+import csv
 import logging
+import pathlib
+from collections import defaultdict
 from io import BytesIO
+from tempfile import NamedTemporaryFile
 
 import aioredis
 import emoji
 import numpy as np
 import requests
 from aiogram import Bot, F, Router, types
-from aiogram.types import InputMediaPhoto, Message
+from aiogram.methods.send_video import SendVideo
+from aiogram.types import (BufferedInputFile, FSInputFile, InputMediaPhoto,
+                           InputMediaVideo, Message)
+from aiogram.utils.media_group import MediaGroupBuilder
 from requests.exceptions import ConnectionError
 
 router = Router()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s: [%(levelname)s] %(message)s')
 
 
+async def form_csv(classification_data: dict):
+    keys = classification_data[0].keys()
+
+    logging.info(f"Forming csv...")
+    with NamedTemporaryFile(delete=False, suffix=".csv", mode="w") as tmp:
+        dict_writer = csv.DictWriter(tmp, keys)
+        dict_writer.writeheader()
+        dict_writer.writerows(classification_data)
+        csv_name = tmp.name
+    logging.info(f"Done froming csv!")
+    return csv_name
+
+
 # Хэндлер на альбом фотографий
 @router.message(F.media_group_id, F.content_type.in_({'photo'}))
 async def handle_albums(message: Message, album: list[Message], bot: Bot):
-    media_group = []
-    pred_result = []
-
     redis = await aioredis.from_url("redis://redis:5370")
     user_id = message.from_user.id
     model = await redis.get("user_id")
@@ -26,25 +43,31 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
         model = "cnn"
         await redis.set(user_id, "cnn")
 
+    media_group_photos = MediaGroupBuilder(caption="Результат детекции YOLO")
+    media_group_csvs = MediaGroupBuilder()
+
+    # Storing csv's paths to delete later
+    csv_paths = []
+
     for i, msg in enumerate(album):
         if msg.photo:
 
-            file_id = msg.photo[-1].file_id
-            media_group.append(InputMediaPhoto(media=file_id))
+            # file_id = msg.photo[-1].file_id
 
             io = BytesIO()
             await bot.download(msg.photo[-1], destination=io)
-            im = io.getvalue()
+            img = io.getvalue()
 
             try:
 
                 response = requests.post(
-                    "http://sign_classifier:80/classify_sign",
-                    params={'model_name': model},
-                    files={'file_img': im}
+                    "http://sign_classifier:80/detect_and_classify_signs",
+                    files={'file_data': img}, params={"user_id": str(user_id), "suffix": ".jpg"}
                 ).json()
                 logging.info(f"Received a response with prediciton: {response}")
-                pred_result.append((response['sign_class'], response['sign_description']))
+                res_csv_path = await form_csv(response)
+                media_group_photos.add_photo(FSInputFile(path=response[0]["result_filepath"], filename=f"YOLO_result_{i}.jpg"))
+                media_group_csvs.add_document(FSInputFile(path=res_csv_path, filename=f"YOLO_result_text_{i}.csv"))
 
             except ConnectionError as ce:
 
@@ -53,13 +76,11 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
                 return
 
     # Возвращаем альбом для удобства чтения результатов классификации
-    await message.answer_media_group(media_group)
-    # Возвращаем предсказания
-    i = 0
-    for pred in pred_result:
-        i += 1
-        await message.reply(f'На фотографии номер {i}:\n'
-                            f'*{model.upper()}* считает, что знак {pred[0]} класса \(_{pred[1]}_\)\.')
+    await bot.send_media_group(chat_id=message.chat.id, media=media_group_photos.build())
+    await bot.send_media_group(chat_id=message.chat.id, media=media_group_csvs.build())
+
+    for p in csv_paths:
+        pathlib.Path(p).unlink()
 
 
 # Хэндлер на одну фотографию
@@ -67,7 +88,7 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
 async def predict_image(message: Message, bot: Bot):
     io = BytesIO()
     io = await bot.download(message.photo[-1], destination=io)
-    im = io.getvalue()
+    img = io.getvalue()
 
     redis = await aioredis.from_url("redis://redis:5370")
     user_id = message.from_user.id
@@ -79,10 +100,13 @@ async def predict_image(message: Message, bot: Bot):
     try:
 
         response = requests.post(
-                    "http://sign_classifier:80/classify_sign",
-                    params={'model_name': model},
-                    files={'file_img': im}
+                    "http://sign_classifier:80/detect_and_classify_signs",
+                    files={'file_data': img}, params={"user_id": str(user_id), "suffix": ".jpg"}
         ).json()
+        if not response:
+            logging.info(f"Received empty response, no detections occured")
+            await message.reply("Не было обнаружено ни одного знака :\(")
+            return
         logging.info(f"Received a response with prediciton: {response}")
 
     except ConnectionError as ce:
@@ -91,8 +115,60 @@ async def predict_image(message: Message, bot: Bot):
         await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
         return
 
-    await message.reply(f'*{model.upper()}* считает, что этот знак '
-                        f'{response["sign_class"]} класса \(_{response["sign_description"]}_\)\.')
+    ann_vid = FSInputFile(path=response[0]["result_filepath"], filename="YOLO_result.jpg")
+    res_csv_path = await form_csv(response)
+    res_csv = FSInputFile(path=res_csv_path, filename="YOLO_result_text.csv")
+
+    await message.reply_document(document=ann_vid, caption="Результат детекции YOLO")
+    await message.reply_document(document=res_csv, caption="CSV с результатами")
+
+    pathlib.Path(res_csv_path).unlink()
+
+
+# Хэндлер на видео
+@router.message(F.video)
+async def predict_video(message: Message, bot: Bot):
+    io = BytesIO()
+    io = await bot.download(message.video, destination=io)
+    vid = io.getvalue()
+
+    redis = await aioredis.from_url("redis://redis:5370")
+    user_id = message.from_user.id
+    model = await redis.get("user_id")
+    if model == None:
+        model = "cnn"
+        await redis.set(user_id, "cnn")   
+  
+    await message.reply("Получил ваше видео, обрабатываю\.\.\.")
+
+    try:
+
+        response = requests.post(
+                    "http://sign_classifier:80/detect_and_classify_signs",
+                    files={'file_data': vid}, params={"user_id": str(user_id), "suffix": ".avi"}
+        ).json()
+        if not response:
+            logging.info(f"Received empty response, no detections occured")
+            await message.reply("Не было обнаружено ни одного знака :\(")
+            return
+        logging.info(f"Received a response with prediciton: {response}")
+
+    except ConnectionError as ce:
+
+        logging.error(f"Connection refused error: {ce}")
+        await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
+        return
+
+    ann_vid = FSInputFile(path=response[0]["result_filepath"], filename="YOLO_result.avi")
+    await message.reply_document(document=ann_vid, caption="Результат детекции YOLO")
+
+    res_csv_path = await form_csv(response)
+    res_csv = FSInputFile(path=res_csv_path, filename="YOLO_result_text.csv")
+
+    await message.reply_document(document=ann_vid, caption="Результат детекции YOLO")
+    await message.reply_document(document=res_csv, caption="CSV с результатами")
+
+    pathlib.Path(res_csv_path).unlink()
 
 
 # Хэндлер на рейтинг
