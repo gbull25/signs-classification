@@ -46,6 +46,7 @@ class ClassificationResult(BaseModel):
     """Classification result validation model."""
     sign_class: int | None = None
     sign_description: str | None = None
+    annotated_file_path: str | None
     message: str = "No prediction was made"
 
 
@@ -273,11 +274,12 @@ def classify_sign(
 
 
 @app.post(
-    "/detect_sign_image"
+    "/detect_and_classify_signs"
     )
-def detect_sign_image(
+def detect_and_classify_signs(
     request: Request,
     file_data: UploadFile,
+    suffix: str = "_",
     user_id="0",
     redis_conn=Depends(get_redis)
         ) -> List[ClassificationResult]:
@@ -298,7 +300,11 @@ def detect_sign_image(
 
     # Copy file to named tmp file
     # https://stackoverflow.com/a/63581187
-    suffix = pathlib.Path(file_data.filename).suffix
+    if suffix == "_":
+       suffix = pathlib.Path(file_data.filename).suffix
+    logging.error(f"{user_id}")
+    logging.error(f"{suffix}")
+    logging.error(f"{file_data.filename}")
     try:
         with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             shutil.copyfileobj(file_data.file, tmp)

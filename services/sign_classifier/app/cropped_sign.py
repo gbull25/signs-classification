@@ -89,8 +89,8 @@ class CroppedSign():
             ):
 
         self.user_id = user_id
-        if isinstance(source_filepath, str):
-            self.source_filepath = pathlib.Path(source_filepath)
+        if isinstance(source_filepath, pathlib.Path):
+            self.source_filepath = str(source_filepath)
         else:
             self.source_filepath = source_filepath
         self.img = img
@@ -255,6 +255,7 @@ class CroppedSign():
         return {
             "sign_class": self.cnn_result_class,
             "sign_description": self.cnn_result_description,
+            "annotated_file_path": self.source_filepath,
             "model_used": "cnn_model"
         }
 
@@ -267,9 +268,6 @@ class CroppedSign():
         for key, val in self.__dict__.items():
             logging.error(f"FORMING REDIS MSG:")
             logging.error(f"{key}: {val}")
-            if key == "source_filepath":
-                res[key] = str(val)
-                continue
             if key == "img":
                 res[key] = val
                 continue

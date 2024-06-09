@@ -27,8 +27,7 @@ class Fistashka():
             conf=0.1,
             stream=True,
             save=True,
-            project=self.project_path,
-            name=self.data.name
+            project=self.project_path
             )
         for frame_number, detection in enumerate(detections_stream):
             if not detection:

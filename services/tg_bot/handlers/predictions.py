@@ -72,7 +72,7 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
 async def predict_image(message: Message, bot: Bot):
     io = BytesIO()
     io = await bot.download(message.photo[-1], destination=io)
-    im = io.getvalue()
+    img = io.getvalue()
 
     redis = await aioredis.from_url("redis://redis:5370")
     user_id = message.from_user.id
@@ -84,8 +84,8 @@ async def predict_image(message: Message, bot: Bot):
     try:
 
         response = requests.post(
-                    "http://sign_classifier:80/detect_sign_photo",
-                    files={'file_photo': im}
+                    "http://sign_classifier:80/detect_and_classify_signs",
+                    files={'file_data': img}, params={"user_id": str(user_id), "suffix": ".jpg"}
         ).json()
         logging.info(f"Received a response with prediciton: {response}")
 
@@ -95,10 +95,42 @@ async def predict_image(message: Message, bot: Bot):
         await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
         return
 
-    #ann_vid =  BufferedInputFile(file=response, filename="video.avi")
-    ann_vid = FSInputFile(path=response['path'])
-    #await bot.send_video(chat_id=message.chat.id, video=cat) 
-    await message.reply_photo(photo=ann_vid, caption="Результат детекции YOLO") 
+    ann_vid = FSInputFile(path=response[0]["annotated_file_path"], filename="YOLO_result.jpg")
+    await message.reply_document(document=ann_vid, caption="Результат детекции YOLO")
+
+
+# Хэндлер на видео
+@router.message(F.video)
+async def predict_video(message: Message, bot: Bot):
+    io = BytesIO()
+    io = await bot.download(message.video, destination=io)
+    vid = io.getvalue()
+
+    redis = await aioredis.from_url("redis://redis:5370")
+    user_id = message.from_user.id
+    model = await redis.get("user_id")
+    if model == None:
+        model = "cnn"
+        await redis.set(user_id, "cnn")   
+  
+    await message.reply("Получил ваше видео, обрабатываю\.\.\.")
+
+    try:
+
+        response = requests.post(
+                    "http://sign_classifier:80/detect_and_classify_signs",
+                    files={'file_data': vid}, params={"user_id": str(user_id), "suffix": ".avi"}
+        ).json()
+        logging.info(f"Received a response with prediciton: {response}")
+
+    except ConnectionError as ce:
+
+        logging.error(f"Connection refused error: {ce}")
+        await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
+        return
+
+    ann_vid = FSInputFile(path=response[0]["annotated_file_path"], filename="YOLO_result.avi")
+    await message.reply_document(document=ann_vid, caption="Результат детекции YOLO")
 
 
 # Хэндлер на рейтинг
@@ -139,39 +171,3 @@ async def current_rating(message: types.Message):
         return
 
     await message.reply(int(np.floor(scale["data"])) * emoji.emojize(":star:"))
-
-
-# Хэндлер на видео
-@router.message(F.video)
-async def predict_video(message: Message, bot: Bot):
-    io = BytesIO()
-    io = await bot.download(message.video, destination=io)
-    im = io.getvalue()
-
-    redis = await aioredis.from_url("redis://redis:5370")
-    user_id = message.from_user.id
-    model = await redis.get("user_id")
-    if model == None:
-        model = "cnn"
-        await redis.set(user_id, "cnn")   
-  
-    await message.reply("Получил ваше видео, обрабатываю\.\.\.")
-
-    try:
-
-        response = requests.post(
-                    "http://sign_classifier:80/detect_sign_video",
-                    files={'file_video': im}
-        ).json()
-        logging.info(f"Received a response with prediciton: {response}")
-
-    except ConnectionError as ce:
-
-        logging.error(f"Connection refused error: {ce}")
-        await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
-        return
-
-    #ann_vid =  BufferedInputFile(file=response, filename="video.avi")
-    ann_vid = FSInputFile(path=response['path'], filename="YOLO_result.avi")
-    #await bot.send_video(chat_id=message.chat.id, video=cat) 
-    await message.reply_document(document=ann_vid, caption="Результат детекции YOLO") 
