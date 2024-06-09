@@ -272,8 +272,6 @@ class CroppedSign():
         res = {}
 
         for key, val in self.__dict__.items():
-            logging.error(f"FORMING REDIS MSG:")
-            logging.error(f"{key}: {val}")
             if key == "img":
                 res[key] = val
                 continue

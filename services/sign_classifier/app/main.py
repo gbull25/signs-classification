@@ -19,10 +19,10 @@ from .auth.models import results
 from .auth.router import router as role_adding_router
 from .auth.schemas import UserCreate, UserRead
 from .cropped_sign import CroppedSign
-from .fistashka import Fistashka
 from .model_loader import ModelLoader
 from .pages.router import router as router_pages
 from .rating.router import router as router_rating
+from .sign_detection import SignDetection
 from .utils import pool
 
 # from fastapi_cache import FastAPICache
@@ -202,7 +202,6 @@ def get_history_pretty(
     """
     try:
         query = redis_conn.xrange("predictions:history", "-", "+", n_entries)
-        logging.debug(f"Query received: {query}")
         logging.info(f"Successfully received history of {len(query)} items")
     except Exception as e:
         logging.info(f"An error occured during redis transaction: {e}")
@@ -310,9 +309,7 @@ async def detect_and_classify_signs(
     # https://stackoverflow.com/a/63581187
     if suffix == "_":
        suffix = pathlib.Path(file_data.filename).suffix
-    logging.error(f"{user_id}")
-    logging.error(f"{suffix}")
-    logging.error(f"{file_data.filename}")
+
     try:
         with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             shutil.copyfileobj(file_data.file, tmp)
@@ -323,7 +320,7 @@ async def detect_and_classify_signs(
     finally:
         file_data.file.close()
     
-    data = Fistashka(tmp_path, user_id, MODELS.yolo_model)
+    data = SignDetection(tmp_path, user_id, MODELS.yolo_model)
     data.detect()
     classification_results = []
 
@@ -342,7 +339,6 @@ async def detect_and_classify_signs(
         )
         # Classify sign using cnn
         predicted_class = sign.classify_cnn(MODELS.cnn_model)
-        logging.error(f"{vars(sign)}")
         logging.info(f"Prediction results: {predicted_class}")
 
         res = ClassificationResult(**predicted_class)

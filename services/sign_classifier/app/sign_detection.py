@@ -10,7 +10,7 @@ from PIL import Image
 from . import settings
 
 
-class Fistashka():
+class SignDetection():
 
     def __init__(self, data, user_id, yolo_model) -> None:
         self.data = data
@@ -22,7 +22,6 @@ class Fistashka():
         self.cropped_images = None
     
     def detect(self):
-        # Predict 
         detections_stream = self.yolo_model.track(
             self.data,
             conf=0.1,
@@ -41,7 +40,6 @@ class Fistashka():
         orig_image = detection.orig_img
         for obj in detection:
             # Somehow there can be no id (id=None)
-            logging.error(f"{obj.boxes.id}")
             if obj.boxes.id:
                 id = int(obj.boxes.id.item())
             else:
@@ -57,7 +55,6 @@ class Fistashka():
                     "cropped_img": cropped_img_bytes.tobytes(),
                     "detection_speed": sum(detection.speed.values())
                 }
-            logging.error(f"{self.objects[id]}")
 
     def stream_objects(self):
         for id, img in self.objects.items():
