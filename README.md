@@ -133,7 +133,7 @@
 Модель, обученая с использованием SIFT'a и мешка слов, судя по метрикам, показала себя несколько лучше. Однако на деле обе модели ошибаются довольно часто и не являются надежными. Желаемого качества предсказаний не удалось достичь, используя линейные модели в ML-подходе.
 
 
-### Этап 2: Convolutional neural network
+## Этап 2: Convolutional neural network
 
 ![Alt Text](readme_data/cnn_example.png)
 
@@ -194,7 +194,7 @@
 
 ### YOLO
 
-![Alt Text](readme_data/yolov8.png)
+![Alt Text](readme_data/yolov8.jpg)
 
 Пример архитектуры YOLOv8.
 
