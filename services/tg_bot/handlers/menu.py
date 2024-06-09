@@ -42,13 +42,13 @@ async def cmd_start(message: types.Message):
     bt1 = types.KeyboardButton(text="Информация")
     bt2 = types.KeyboardButton(text="Получить картинку")
     bt3 = types.KeyboardButton(text="Получить альбом")
-    bt4 = types.KeyboardButton(text="Оценить бота")
-    bt5 = types.KeyboardButton(text="Текущий рейтинг")
-    bt6 = types.KeyboardButton(text="Выбрать модель")
+    bt4 = types.KeyboardButton(text="Получить видео")
+    bt5 = types.KeyboardButton(text="Оценить бота")
+    bt6 = types.KeyboardButton(text="Текущий рейтинг")
 
     builder.row(bt1)
-    builder.row(bt2, bt3)
-    builder.row(bt4, bt5, bt6)
+    builder.row(bt2, bt3, bt4)
+    builder.row(bt5, bt6)
 
     await message.answer("Что бы вы хотели узнать?",
                          reply_markup=builder.as_markup(resize_keyboard=True))
@@ -60,19 +60,20 @@ async def cmd_start(message: types.Message):
 async def info(message: types.Message):
     text = ("Этот телеграм\-бот является частью студенческого "
             "[проекта\.](https://github.com/gbull25/signs-classification)\n"
-            "Бот предсказывает класс немецких знаков по фотографиям\.")
+            "Бот детектирует и предсказывает класс российских дорожных знаков\.")
     await message.answer(text)
-    text = ("В настоящий момент в боте реализовано три модели "
-            "машинного обучения, переключиться между ними можно в меню\.")
+    text = ("В настоящий момент в боте реализована модель детекции YOLO "
+            "и модель классификации CNN\. Они работают последовательно "
+            "для максимальной точности предсказания\.")
     await message.answer(text)
-    text = ("Чтобы получить тестовую фотографию, нажмите на "
-            "кнопку 'Получить картинку'\.\nОтправьте фотографию "
-            "или несколько фотографий со сжатием, чтобы получить "
-            "предсказание класса знака текущей моделью для каждой из них\.")
+    text = ("Чтобы получить тестовое фото, набор фото или видео, нажмите на "
+            "соответствующие кнопки в меню\.\nКонечно, вы также можете "
+            "использовать собственные фото и видео\. Рекомендуем отправлять фотографии "
+            "со сжатием\.")
     await message.answer(text)
     text = ("Если вы пользуетесь ботом с мобильного устройства, "
             "рекомендуется пересылать боту сообщения с полученными тестовыми картинками, "
-            "без предварительного сохранения фотографий на внутреннюю память телефона, "
+            "без предварительного сохранения фото на внутреннюю память телефона, "
             "во избежание дополнительного сжатия\.")
     await message.answer(text)
     text = ("Если вы хотите оценить бота, нажмите на кнопку "
@@ -95,9 +96,21 @@ async def upload_photo(message: Message):
     image_from_pc = FSInputFile(path=filename)
     await message.answer_photo(
         image_from_pc,
-        caption="Прошу, ваша тестовая картинка готова\!"
+        caption="Прошу, ваша тестовая картинка\!"
     )
 
+# Хэндлер на команду получить видео
+@router.message(F.text.lower() == "получить видео")
+@router.message(Command('image'))
+async def upload_video(message: Message):
+    path = "sample_videos/**"
+    filename = random.choice(glob.glob(path))
+    # Отправка файла из файловой системы
+    image_from_pc = FSInputFile(path=filename)
+    await message.answer_video(
+        image_from_pc,
+        caption="Прошу, ваше тестовое видео\!"
+    )
 
 # Хэндлер на команду получить альбом
 @router.message(F.text.lower() == "получить альбом")
@@ -155,40 +168,40 @@ async def send_album(callback: types.CallbackQuery):
 
 
 # Хэндлер на команду установить модель.
-@router.message(F.text.lower() == "выбрать модель")
-@router.message(Command('set_model'))
-async def set_model(message: types.Message):
-    builder = InlineKeyboardBuilder()
-    builder.add(types.InlineKeyboardButton(
-        text="CNN",
-        callback_data="model_cnn")
-    )
-    builder.add(types.InlineKeyboardButton(
-        text="SVC_SIFT",
-        callback_data="model_sift")
-    )
-    builder.add(types.InlineKeyboardButton(
-        text="SVC_HOG",
-        callback_data="model_hog")
-    )
-
-    await message.answer(
-        "Пожалуйста, выберите модель\.",
-        reply_markup=builder.as_markup()
-    )
+#@router.message(F.text.lower() == "выбрать модель")
+#@router.message(Command('set_model'))
+#async def set_model(message: types.Message):
+#    builder = InlineKeyboardBuilder()
+#    builder.add(types.InlineKeyboardButton(
+#        text="CNN",
+#        callback_data="model_cnn")
+#    )
+#    builder.add(types.InlineKeyboardButton(
+#        text="SVC_SIFT",
+#        callback_data="model_sift")
+#    )
+#    builder.add(types.InlineKeyboardButton(
+#        text="SVC_HOG",
+#        callback_data="model_hog")
+#    )
+#
+#    await message.answer(
+#        "Пожалуйста, выберите модель\.",
+#        reply_markup=builder.as_markup()
+#    )
 
 
 # Калбэк на команду установить модель
-@router.callback_query(F.data.startswith("model_"))
-async def set_model_callback(callback: types.CallbackQuery):
-    redis = await aioredis.from_url("redis://redis:5370")
-    user_id = callback.from_user.id
-    model = callback.data.split('_')[1]
-    await redis.set(user_id, model)
-    await callback.answer(
-        f"Выбрана модель {model}\!",
-        show_alert=True
-    )
+#@router.callback_query(F.data.startswith("model_"))
+#async def set_model_callback(callback: types.CallbackQuery):
+#    redis = await aioredis.from_url("redis://redis:5370")
+#    user_id = callback.from_user.id
+#    model = callback.data.split('_')[1]
+#    await redis.set(user_id, model)
+#    await callback.answer(
+#        f"Выбрана модель {model}\!",
+#        show_alert=True
+#    )
 
 
 # Хэндлер на команду оценить бота

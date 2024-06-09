@@ -38,17 +38,17 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
 
             io = BytesIO()
             await bot.download(msg.photo[-1], destination=io)
-            im = io.getvalue()
+            img = io.getvalue()
 
             try:
 
                 response = requests.post(
                     "http://sign_classifier:80/detect_sign_photo",
-                    files={'file_photo': im}
+                    files={'file_data': img}, params={"user_id": str(user_id), "suffix": ".jpg"}
                 ).json()
                 logging.info(f"Received a response with prediciton: {response}")
                 #pred_result.append(InputMediaPhoto(media='attach://' + response['path']))
-                media_group.add_photo(media=FSInputFile(response['path']))
+                media_group.add_photo(FSInputFile(path=response[0]["annotated_file_path"], filename="YOLO_result.jpg"))
 
             except ConnectionError as ce:
 

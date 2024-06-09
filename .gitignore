@@ -13,7 +13,7 @@ data/
 # first iteration code
 experiments/
 services/fastapi/
-services/model/
+#services/model/
 **data_short.pickle
 **hog_mid_proba.pickle
 render_requirements.txt
@@ -48,7 +48,7 @@ share/python-wheels/
 **kmeans.gz
 **sift_svm.gz
 **lzma_hog_proba.xz
-**/*.pt
+#**/*.pt
 
 # other
 **/user_data

@@ -38,7 +38,7 @@ class ModelLoader():
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         try:
             self.cnn_model.load_state_dict(torch.load(cnn_model_path, map_location=self.device))
-            self.yolo_model = YOLO(yolo_model_path)
+            self.yolo_model = YOLO(yolo_model_path).to(self.device)
             logging.info("Successfully loaded DL models!")
         except FileNotFoundError as fnfe:
             logging.error(f"Error occured while loading DL models:\n\n {fnfe}")
