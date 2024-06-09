@@ -1,7 +1,10 @@
-# Классификация дорожных знаков
-Проект посвящен созданию сервиса классификации дорожных знаков. В качестве обучающего датасета взят каноничный в этой области [GTSRB](https://www.kaggle.com/datasets/meowmeowmeowmeowmeow/gtsrb-german-traffic-sign).
+# Детекция и классификация дорожных знаков
+Проект посвящен созданию сервиса детекции и классификации дорожных знаков. 
 
-Ссылка на Яндекс.Диск с данными - [тут](https://disk.yandex.ru/d/Lt3161xIH5m0MQ).
+У проекта имеется несколько этапов развития. Подробно о них можно почитать ниже.
+
+В качестве обучающего датасета взят каноничный в этой области [GTSRB](https://www.kaggle.com/datasets/meowmeowmeowmeowmeow/gtsrb-german-traffic-sign).
+Позднее мы перешли на датасет [RTSD](https://graphics.cs.msu.ru/projects/traffic-sign-recognition.html). 
 
 Ссылки на Docker Hub:
 - [Телеграм бот](https://hub.docker.com/repository/docker/gbull25/tg_bot/general)

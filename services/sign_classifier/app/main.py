@@ -7,16 +7,23 @@ from typing import Dict, List, Union
 
 import redis
 import torch
-from fastapi import Depends, FastAPI, Request, UploadFile
+import aiofiles
+import asyncio
+import os
+import shutil
+from fastapi import Depends, FastAPI, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
+from tempfile import NamedTemporaryFile
+from fastapi.concurrency import run_in_threadpool
 
 from .auth.base_config import auth_backend, fastapi_users
 from .auth.router import router as role_adding_router
 from .auth.schemas import UserCreate, UserRead
 from .cropped_sign import CroppedSign
+from .yolo import YOLO_detect
 from .model_loader import ModelLoader
 from .pages.router import router as router_pages
 from .rating.router import router as router_rating
@@ -266,9 +273,9 @@ def classify_sign(
 
 
 @app.post(
-    "/detect_sign"
+    "/detect_sign_image"
     )
-def detect_sign(
+def detect_sign_image(
     request: Request,
     file_data: UploadFile,
     user_id="0",
@@ -343,7 +350,105 @@ def detect_sign(
             logging.error(f"An error occured during redis transaction: {e}")
 
     return classification_results
-    return None
+
+
+
+
+@app.post(
+    "/detect_sign_video"
+    )
+async def detect_sign_video(
+    request: Request,
+    file_video: UploadFile,
+    model_name: str = 'yolo',
+    redis_conn=Depends(get_redis)
+        ):
+
+
+    try:
+        shutil.rmtree('./video/track/')
+    except OSError as e:
+        # If it fails, inform the user.
+        print("Error: %s - %s." % (e.filename, e.strerror))
+
+    temp = NamedTemporaryFile(delete=False, suffix='.avi')
+
+    #try:
+    contents = file_video.file.read()
+    with temp as f:
+        f.write(contents)
+    #except Exception:
+    #    return {"message": "There was an error uploading the file"}
+    #finally:
+    file_video.file.close()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f'Using device: {device}')
+    res = YOLO_detect().process_video(temp.name, MODELS.yolo_model)  # Pass temp.name to VideoCapture()
+    #except Exception:
+    #    return {"message": "There was an error processing the file"}
+    #finally:
+        #temp.close()  # the `with` statement above takes care of closing the file
+
+    file_path = "./video/track/" + temp.name[5:]
+    #file_path_mp4 = file_path[:-3] + 'mp4'
+
+    #os.rename(file_path, file_path_mp4)
+    os.remove(temp.name)
+
+    #return FileResponse(path=file_path,filename=file_path, media_type="video/avi")       
+    return {'path': file_path}
+
+@app.post(
+    "/detect_sign_photo"
+    )
+async def detect_sign_photo(
+    request: Request,
+    file_photo: UploadFile,
+    model_name: str = 'yolo',
+    redis_conn=Depends(get_redis)
+        ):
+
+
+    #try:
+    #    shutil.rmtree('./video/predict/')
+    #except OSError as e:
+    #    # If it fails, inform the user.
+    #    print("Error: %s - %s." % (e.filename, e.strerror))
+
+    temp = NamedTemporaryFile(delete=False, suffix='.jpg')
+
+    #try:
+    contents = file_photo.file.read()
+    with temp as f:
+        f.write(contents)
+
+    file_photo.file.close()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f'Using device: {device}')
+    res = YOLO_detect().process_photo(temp.name, MODELS.yolo_model)  # Pass temp.name to VideoCapture()
+
+
+    file_path = "./video/predict/" + temp.name[5:]
+    #file_path_mp4 = file_path[:-3] + 'mp4'
+
+    #os.rename(file_path, file_path_mp4)
+    os.remove(temp.name)
+
+    #return FileResponse(path=file_path,filename=file_path, media_type="video/avi")       
+    return {'path': file_path}
+
+
+@app.get(
+    "/get_annotated_video"
+    )
+async def get_annotated_video(
+    video_name: str
+        ):
+    file_path = "./result/track/" + video_name
+
+
+    return FileResponse(path=file_path,filename=file_path, media_type="video/avi")
+
 
 
 # if __name__ == "__main__":
