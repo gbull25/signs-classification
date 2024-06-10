@@ -64,10 +64,14 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
                     "http://sign_classifier:80/detect_and_classify_signs",
                     files={'file_data': img}, params={"user_id": str(user_id), "suffix": ".jpg"}
                 ).json()
-                logging.info(f"Received a response with prediciton: {response}")
-                res_csv_path = await form_csv(response)
-                media_group_photos.add_photo(FSInputFile(path=response[0]["result_filepath"], filename=f"YOLO_result_{i}.jpg"))
-                media_group_csvs.add_document(FSInputFile(path=res_csv_path, filename=f"YOLO_result_text_{i}.csv"))
+                if not response:
+                    logging.info(f"Received empty response, no detections occured")
+                    await message.reply(f"На {i+1} фотографии не было обнаружено ни одного знака :\(")
+                else:
+                    logging.info(f"Received a response with prediciton: {response}")
+                    res_csv_path = await form_csv(response)
+                    media_group_photos.add_photo(FSInputFile(path=response[0]["result_filepath"], filename=f"YOLO_result_{i}.jpg"))
+                    media_group_csvs.add_document(FSInputFile(path=res_csv_path, filename=f"Final_result_text_{i}.csv"))
 
             except ConnectionError as ce:
 
@@ -117,7 +121,7 @@ async def predict_image(message: Message, bot: Bot):
 
     ann_vid = FSInputFile(path=response[0]["result_filepath"], filename="YOLO_result.jpg")
     res_csv_path = await form_csv(response)
-    res_csv = FSInputFile(path=res_csv_path, filename="YOLO_result_text.csv")
+    res_csv = FSInputFile(path=res_csv_path, filename="Final_result_text.csv")
 
     await message.reply_document(document=ann_vid, caption="Результат детекции YOLO")
     await message.reply_document(document=res_csv, caption="CSV с результатами")
@@ -160,10 +164,9 @@ async def predict_video(message: Message, bot: Bot):
         return
 
     ann_vid = FSInputFile(path=response[0]["result_filepath"], filename="YOLO_result.avi")
-    await message.reply_document(document=ann_vid, caption="Результат детекции YOLO")
 
     res_csv_path = await form_csv(response)
-    res_csv = FSInputFile(path=res_csv_path, filename="YOLO_result_text.csv")
+    res_csv = FSInputFile(path=res_csv_path, filename="Final_result_text.csv")
 
     await message.reply_document(document=ann_vid, caption="Результат детекции YOLO")
     await message.reply_document(document=res_csv, caption="CSV с результатами")

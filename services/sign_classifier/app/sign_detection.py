@@ -1,11 +1,6 @@
-import io
-import logging
-import pathlib
 import time
-
+import pandas as pd
 import cv2
-import numpy as np
-from PIL import Image
 
 from . import settings
 
@@ -24,7 +19,7 @@ class SignDetection():
     def detect(self):
         detections_stream = self.yolo_model.track(
             self.data,
-            conf=0.1,
+            conf=0.5,
             stream=True,
             save=True,
             project=self.project_path
