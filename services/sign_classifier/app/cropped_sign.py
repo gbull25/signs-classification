@@ -73,49 +73,59 @@ class CroppedSign():
     def __init__(
             self,
             user_id: int,
-            source_filepath: str | pathlib.Path,
+            result_filepath: str | pathlib.Path,
             img: bytes,
             bbox: str | None = None,
-            id: int | None = None,
+            detection_id: int | None = None,
             frame_number: int = 1,
             detection_speed: float = 0,
             classification_speed: float = 0,
-            hog_result_class: int | None = None,
-            hog_result_description: str | None = None,
-            sift_result_class: int | None = None,
-            sift_result_description: str = None,
-            cnn_result_class: int | None = None,
-            cnn_result_description: str | None = None,
+            # hog_result_class: int | None = None,
+            # hog_result_description: str | None = None,
+            # sift_result_class: int | None = None,
+            # sift_result_description: str = None,
+            # cnn_result_class: int | None = None,
+            # cnn_result_description: str | None = None,
+            classification_results: dict = {}
             ):
 
         self.user_id = user_id
-        if isinstance(source_filepath, pathlib.Path):
-            self.source_filepath = str(source_filepath)
+        if isinstance(result_filepath, pathlib.Path):
+            self.result_filepath = str(result_filepath)
         else:
-            self.source_filepath = source_filepath
+            self.result_filepath = result_filepath
         self.img = img
         self.bbox = bbox
-        self.id = id
+        self.detection_id = detection_id
         self.frame_number = frame_number
         self.detection_speed = detection_speed
         self.classification_speed = classification_speed
+        if not classification_results:
+            self.classification_results: Dict[str, Dict[str, Union[str, float]]] = {
+                    "cnn": {},
+                    "hog": {},
+                    "sift": {}
+                }
+        else:
+            self.classification_results = classification_results
 
+        # self.hog_result_class = hog_result_class
+        # self.hog_result_description = hog_result_description
+        # self.sift_result_class = sift_result_class
+        # self.sift_result_description = sift_result_description
+        # self.cnn_result_class = cnn_result_class
+        # self.cnn_result_description = cnn_result_description
 
-        self.hog_result_class = hog_result_class
-        self.hog_result_description = hog_result_description
-        self.sift_result_class = sift_result_class
-        self.sift_result_description = sift_result_description
-        self.cnn_result_class = cnn_result_class
-        self.cnn_result_description = cnn_result_description
-
-    def timer(func):
-        def wrapper(self, *arg, **kw):
-            t1 = time.time()
-            res = func(self, *arg, **kw)
-            t2 = time.time()
-            self.classification_speed = (t2 - t1)
-            return res
-        return wrapper
+    def timer(model_name):
+        def inner(func):
+            def wrapper(self, *arg, **kw):
+                t1 = time.time()
+                res = func(self, *arg, **kw)
+                t2 = time.time()
+                self.classification_results[model_name]["classification_speed"] = (t2 - t1)
+                return res
+            return wrapper
+        return inner
 
     def preprocess_for_sift(self, img_shape=(32, 32)):
         """
@@ -205,9 +215,9 @@ class CroppedSign():
 
         pred_class = int(svc_sift_model.predict(features.reshape(1, -1))[0])
 
-        # Save results
-        self.sift_result_class = pred_class
-        self.sift_result_description = self.describe_by_class[pred_class]
+        # # Save results
+        # self.sift_result_class = pred_class
+        # self.sift_result_description = self.describe_by_class[pred_class]
 
         # Return dict for making response
         return {
@@ -216,7 +226,7 @@ class CroppedSign():
             "model_used": "cnn_model"
         }
 
-    @timer
+    @timer("cnn")
     def classify_cnn(self, cnn_model):
         """
         Classify cropped sign image with CNN model.
@@ -252,18 +262,22 @@ class CroppedSign():
         self.cnn_result_description = self.describe_by_class[pred_class.item()]
 
         # Return dict for making response
-        return {
-            "user_id": self.user_id,
-            "result_filepath": self.source_filepath,
-            "detection_id": self.id,
-            "detection_conf": 0,
-            "sign_class": int(self.cnn_result_class),
-            "sign_description": self.cnn_result_description,
-            "bbox": self.bbox,
-            "frame_number": self.frame_number,
-            "detection_speed": self.detection_speed,
-            "model_used": "cnn_model"
+        self.classification_results["cnn"] = {
+            "sign_class": pred_class.item(),
+            "sign_description": self.describe_by_class[pred_class.item()]
         }
+        # return {
+        #     "user_id": self.user_id,
+        #     "result_filepath": self.source_filepath,
+        #     "detection_id": self.id,
+        #     "detection_conf": 0,
+        #     "sign_class": int(self.cnn_result_class),
+        #     "sign_description": self.cnn_result_description,
+        #     "bbox": self.bbox,
+        #     "frame_number": self.frame_number,
+        #     "detection_speed": self.detection_speed,
+        #     "model_used": "cnn_model"
+        # }
 
     def to_redis(self) -> Dict[str, Union[str, int]]:
         """
@@ -272,6 +286,11 @@ class CroppedSign():
         res = {}
 
         for key, val in self.__dict__.items():
+            if key == "classification_results":
+                for model, results in val.items():
+                    for k, v in results.items():
+                        res[model+"_"+k] = v
+                continue
             if key == "img":
                 res[key] = val
                 continue
@@ -280,7 +299,6 @@ class CroppedSign():
             else:
                 res[key] = val
             logging.info(f"Key: {key}, {type(key)}, Value: {val}, {type(val)}")
-
         return res
 
     def to_html(self) -> Dict[str, Union[str, int]]:
@@ -290,12 +308,42 @@ class CroppedSign():
 
         return res
 
+    def to_postgres(self, model_used):
+        res = {}
+
+        for key, val in self.__dict__.items():
+            if key == "classification_results":
+                for k, v in self.classification_results[model_used].items():
+                    res[k.replace(model_used, "")] = v
+                continue
+            if key == "img":
+                continue
+            else:
+                res[key] = val
+            logging.info(f"Key: {key}, {type(key)}, Value: {val}, {type(val)}")
+        return res
+
     @classmethod
     def from_redis(cls, init_data):
         """Call init with data from redis"""
         res = {}
+        classification_models = ["cnn", "hog", "sift"]
         for key, val in init_data.items():
             key = key.decode('utf-8')
+
+            is_classification_res = False
+            for model in classification_models:
+                if key.startswith(model):
+                    is_classification_res = True
+                    if res.get(model):
+                        res[model][key.split("_")[-1]] = val.decode("utf-8")
+                    else:
+                        res[model] = {}
+                        res[model][key.split("_")[-1]] = val.decode("utf-8")
+                    break
+            if is_classification_res:
+                continue
+
             if key == 'img':
                 res[key] = val
                 continue

@@ -23,13 +23,13 @@ class ModelLoader():
         # Load ML models
         logging.info("Initialized ModelLoader instance.")
         logging.info("Loading ML models...")
-        try:
-            self.hog_model = joblib.load(hog_model_path)
-            self.kmeans = joblib.load(kmeans_model_path)
-            self.sift_model = joblib.load(sift_model_path)
-            logging.info("Successfully loaded ML models!")
-        except FileNotFoundError as fnfe:
-            logging.error(f"Error occured while loading ML models:\n\n{fnfe}")
+        # try:
+        #     self.hog_model = joblib.load(hog_model_path)
+        #     self.kmeans = joblib.load(kmeans_model_path)
+        #     self.sift_model = joblib.load(sift_model_path)
+        #     logging.info("Successfully loaded ML models!")
+        # except FileNotFoundError as fnfe:
+        #     logging.error(f"Error occured while loading ML models:\n\n{fnfe}")
 
         # Init and load cnn_model
         logging.info("Loading DL models...")

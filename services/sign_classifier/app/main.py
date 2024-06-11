@@ -45,6 +45,7 @@ class ClassificationResult(BaseModel):
     bbox: str | None = None
     frame_number: int = 1
     detection_speed: float = 0.0
+    classification_speed: float = 0.0
     model_used: str = "cnn"
 
 
@@ -211,6 +212,7 @@ def get_history_pretty(
     history_list = []
     for item in query:
         history_list.append(CroppedSign.from_redis(item[1]).to_html())
+    logging.error(history_list)
 
     return templates.TemplateResponse("history.html", {"request": request, "history_list": history_list})
 
@@ -247,8 +249,8 @@ def classify_sign(
 
     # Define CroppedSign instance
     sign = CroppedSign(
-        img= byte_img,
-        id = 0,
+        img=byte_img,
+        id=0,
         filename=file_img.filename
     )
 
@@ -289,7 +291,7 @@ async def detect_and_classify_signs(
     user_id="0",
     redis_conn=Depends(get_redis),
     postgres_session=Depends(get_async_session)
-        ) -> List[ClassificationResult]:
+        ):
     """Classify which sign is in the image.
 
     Args:
@@ -308,7 +310,7 @@ async def detect_and_classify_signs(
     # Copy file to named tmp file
     # https://stackoverflow.com/a/63581187
     if suffix == "_":
-       suffix = pathlib.Path(file_data.filename).suffix
+        suffix = pathlib.Path(file_data.filename).suffix
 
     try:
         with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
@@ -319,29 +321,29 @@ async def detect_and_classify_signs(
         return ClassificationResult(message="Unexpected error while reading uploaded file")
     finally:
         file_data.file.close()
-    
+
     data = SignDetection(tmp_path, user_id, MODELS.yolo_model)
     data.detect()
     classification_results = []
 
     # # Generate cropped_signs from detected objects
-    
-    for id, obj in data.stream_objects():
+
+    for frame_number, id, obj in data.stream_objects():
         sign = CroppedSign(
             user_id=user_id,
-            source_filepath=obj["file_path"],
+            result_filepath=data.annotated_filepath,
             img=obj["cropped_img"],
             bbox=obj["bbox"],
-            id=id,
-            frame_number=obj["frame_number"],
+            detection_id=id,
+            frame_number=frame_number,
             detection_speed=obj["detection_speed"]
-            # filename=obj["filename"]
         )
         # Classify sign using cnn
-        predicted_class = sign.classify_cnn(MODELS.cnn_model)
-        logging.info(f"Prediction results: {predicted_class}")
+        sign.classify_cnn(MODELS.cnn_model)
+        logging.info(f"Prediction results: {sign.classification_results['cnn']}")
 
-        res = ClassificationResult(**predicted_class)
+        logging.error(sign.to_postgres("cnn"))
+        res = ClassificationResult(**sign.to_postgres("cnn"))
         await write_results(res, postgres_session)
         classification_results.append(res)
 

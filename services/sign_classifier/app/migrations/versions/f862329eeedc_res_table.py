@@ -5,9 +5,8 @@ Revises: abbb05bcd801
 Create Date: 2024-06-09 17:04:39.541776
 
 """
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = 'f862329eeedc'
@@ -22,14 +21,14 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.String(), nullable=False),
     sa.Column('result_filepath', sa.String(), nullable=False),
-    sa.Column('frame_num', sa.Integer(), nullable=True),
     sa.Column('detection_id', sa.Integer(), nullable=False),
     sa.Column('detection_conf', sa.Float(), nullable=False),
     sa.Column('sign_class', sa.Integer(), nullable=False),
     sa.Column('sign_description', sa.String(), nullable=False),
     sa.Column('bbox', sa.String(), nullable=False),
     sa.Column('frame_number', sa.Integer(), nullable=False),
-    sa.Column('detection_speed', sa.Integer(), nullable=False),
+    sa.Column('detection_speed', sa.Float(), nullable=False),
+    sa.Column('classification_speed', sa.Float(), nullable=False),
     sa.Column('model_used', sa.String(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )

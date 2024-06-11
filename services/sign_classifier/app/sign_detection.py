@@ -1,5 +1,8 @@
+import pathlib
 import time
-import pandas as pd
+from collections import defaultdict
+from typing import Dict, Union
+
 import cv2
 
 from . import settings
@@ -7,15 +10,15 @@ from . import settings
 
 class SignDetection():
 
-    def __init__(self, data, user_id, yolo_model) -> None:
+    def __init__(self, data: pathlib.Path, user_id: str, yolo_model) -> None:
         self.data = data
         self.project_path = settings.user_data_storage_path / user_id / str(int(round(time.time() * 1000)))
         self.project_path.mkdir(parents=True, exist_ok=True)
+        self.annotated_filepath = self.project_path / "track" / self.data.name
         self.yolo_model = yolo_model
         self.detection_result = []
-        self.objects = {}
-        self.cropped_images = None
-    
+        self.objects: Dict[int, Dict[str, Dict[str, Union[str, bytes, float]]]] = defaultdict(dict)
+
     def detect(self):
         detections_stream = self.yolo_model.track(
             self.data,
@@ -30,7 +33,7 @@ class SignDetection():
                 continue
             self.detection_result.append(detection)
             self._process_detection(frame_number+1, detection)
-            
+
     def _process_detection(self, frame_number, detection):
         orig_image = detection.orig_img
         for obj in detection:
@@ -43,14 +46,21 @@ class SignDetection():
             cropped_img = orig_image[y1:y2, x1:x2]
             encode_params = [cv2.IMWRITE_JPEG_QUALITY, 100]
             _, cropped_img_bytes = cv2.imencode('.jpg', cropped_img, encode_params)
-            self.objects[id] = {
-                    "file_path": self.project_path / "track" / self.data.name,
-                    "frame_number": frame_number,
+            # if not self.objects[frame_number]:
+            #     self.objects[frame_number] = {}
+            #     self.objects[frame_number][id] = {
+            #             "bbox": str([x1, y1, x2, y2]),
+            #             "cropped_img": cropped_img_bytes.tobytes(),
+            #             "detection_speed": sum(detection.speed.values())
+            #         }
+            # else:
+            self.objects[frame_number][id] = {
                     "bbox": str([x1, y1, x2, y2]),
                     "cropped_img": cropped_img_bytes.tobytes(),
                     "detection_speed": sum(detection.speed.values())
                 }
 
     def stream_objects(self):
-        for id, img in self.objects.items():
-            yield id, img
+        for frame_number, id in self.objects.items():
+            for id, obj in id.items():
+                yield frame_number, id, obj
