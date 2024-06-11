@@ -46,17 +46,10 @@ class SignDetection():
             cropped_img = orig_image[y1:y2, x1:x2]
             encode_params = [cv2.IMWRITE_JPEG_QUALITY, 100]
             _, cropped_img_bytes = cv2.imencode('.jpg', cropped_img, encode_params)
-            # if not self.objects[frame_number]:
-            #     self.objects[frame_number] = {}
-            #     self.objects[frame_number][id] = {
-            #             "bbox": str([x1, y1, x2, y2]),
-            #             "cropped_img": cropped_img_bytes.tobytes(),
-            #             "detection_speed": sum(detection.speed.values())
-            #         }
-            # else:
             self.objects[frame_number][id] = {
                     "bbox": str([x1, y1, x2, y2]),
                     "cropped_img": cropped_img_bytes.tobytes(),
+                    "detection_conf": obj.boxes.conf.item(),
                     "detection_speed": sum(detection.speed.values())
                 }
 

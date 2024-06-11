@@ -335,6 +335,7 @@ async def detect_and_classify_signs(
             img=obj["cropped_img"],
             bbox=obj["bbox"],
             detection_id=id,
+            detection_conf=obj["detection_conf"],
             frame_number=frame_number,
             detection_speed=obj["detection_speed"]
         )
