@@ -48,7 +48,7 @@ class SignDetection():
             _, cropped_img_bytes = cv2.imencode('.jpg', cropped_img, encode_params)
             self.objects[frame_number][id] = {
                     "bbox": str([x1, y1, x2, y2]),
-                    "cropped_img": cropped_img_bytes.tobytes(),
+                    "img": cropped_img_bytes.tobytes(),
                     "detection_conf": obj.boxes.conf.item(),
                     "detection_speed": sum(detection.speed.values())
                 }
