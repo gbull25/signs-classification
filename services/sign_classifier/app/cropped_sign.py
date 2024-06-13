@@ -67,7 +67,7 @@ class CroppedSign():
             return wrapper
         return inner
 
-    def preprocess_for_sift(self, img_shape=(32, 32)):
+    def _preprocess_for_sift(self, img_shape=(32, 32)):
         """
         Preprocess image, represented by np.array.
 
@@ -94,7 +94,7 @@ class CroppedSign():
             normalized_gray_img = cv2.resize(normalized_gray_img, img_shape, interpolation=cv2.INTER_CUBIC)
 
         # Save preprocessed image
-        self.preprocessed_sift_img = normalized_gray_img
+        return normalized_gray_img
 
     @timer("hog")
     def classify_hog(self, svc_hog_model):
@@ -126,17 +126,19 @@ class CroppedSign():
         }
 
     @timer("sift")
-    def classify_sift(self, kmeans_model, svc_sift_model):
+    def classify_sift(self, sift_model):
         """
         Classify cropped sign image with SVC model based on SIFT feature extraction.
         """
+        kmeans_model = sift_model["kmeans"]
+        sift_model = sift_model["sift"]
         # Initialize feature vector
         features = np.zeros(645)
         # Preprocess image
-        self.preprocess_for_sift()
+        preprocessed_img = self._preprocess_for_sift()
 
         sift = cv2.SIFT_create(sigma=1.0)
-        _, des = sift.detectAndCompute(self.preprocessed_sift_img, None)
+        _, des = sift.detectAndCompute(preprocessed_img, None)
 
         try:
             closest_idx = kmeans_model.predict(des)
@@ -149,7 +151,7 @@ class CroppedSign():
 
         logging.debug(f'SIFT feature vector: {features}')
 
-        pred_class = int(svc_sift_model.predict(features.reshape(1, -1))[0])
+        pred_class = int(sift_model.predict(features.reshape(1, -1))[0])
 
         self.classification_results["sift"] = {
             "sign_class": pred_class,
@@ -190,6 +192,10 @@ class CroppedSign():
             "sign_description": self.describe_by_class[pred_class.item()]
         }
 
+    def classify(self, model_name, classification_model):
+        classification_method = getattr(self, f"classify_{model_name}")
+        classification_method(classification_model)
+
     def to_redis(self) -> Dict[str, Union[str, int]]:
         """
         Make modified dict of the self attributes to store in redis.
@@ -205,11 +211,14 @@ class CroppedSign():
 
     def to_postgres(self, model_used):
         res = dict(self)
+        # res = deepcopy(self.__dict__)
         _ = res.pop("img")
         classification_results = res.pop("classification_results")
 
         for key, val in classification_results[model_used].items():
             res[key] = val
+
+        res["model_used"] = model_used
 
         return res
 

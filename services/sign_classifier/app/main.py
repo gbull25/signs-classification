@@ -1,6 +1,7 @@
 import logging
 import pathlib
 import shutil
+import time
 import uuid
 from tempfile import NamedTemporaryFile
 from typing import Dict, List, Union
@@ -64,13 +65,19 @@ def make_user_id():
     return str(uuid.uuid4())
 
 
-async def write_results(classification_result: ClassificationResult, session):
-    insert_stmt = insert(results).values(**classification_result.dict())
+async def write_results(classification_result: List[ClassificationResult], session):
+    classification_result = [entry.dict() for entry in classification_result]
+    insert_stmt = insert(results).values(classification_result)
     do_update_stmt = insert_stmt.on_conflict_do_nothing(index_elements=["id"])
 
     await session.execute(do_update_stmt)
     await session.commit()
     return {"status": "success"}
+
+    # classification_result = [entry.dict() for entry in classification_result]
+    # stmt = op.bulk_insert(results, classification_result)
+    # await session.bulk_save_objects(stmt)
+    # await session.commit()
 
 
 # load models as global var
@@ -280,17 +287,17 @@ def classify_sign(
     )
 
 
-@app.post(
-    "/detect_and_classify_signs"
-    )
+@app.post("/detect_and_classify_signs")
 async def detect_and_classify_signs(
     request: Request,
     file_data: UploadFile,
+    classification_model: str = "cnn",
+    detection_model: str = "yolo",
     suffix: str = "_",
     user_id="0",
     redis_conn=Depends(get_redis),
     postgres_session=Depends(get_async_session)
-        ):
+        ) -> List[ClassificationResult]:
     """Classify which sign is in the image.
 
     Args:
@@ -321,12 +328,12 @@ async def detect_and_classify_signs(
     finally:
         file_data.file.close()
 
-    data = SignDetection(tmp_path, user_id, MODELS.yolo_model)
+    data = SignDetection(tmp_path, user_id, MODELS.get_model(detection_model))
     data.detect()
     classification_results = []
 
     # # Generate cropped_signs from detected objects
-
+    t1 = time.time()
     for frame_number, id, obj in data.stream_objects():
         sign = CroppedSign(
             user_id=user_id,
@@ -336,11 +343,9 @@ async def detect_and_classify_signs(
             **obj
         )
         # Classify sign using cnn
-        sign.classify_cnn(MODELS.cnn_model)
+        sign.classify(classification_model, MODELS.get_model(classification_model))
         logging.info(f"Prediction results: {sign.classification_results['cnn']}")
-
-        res = ClassificationResult(**sign.to_postgres("cnn"))
-        await write_results(res, postgres_session)
+        res = ClassificationResult(**sign.to_postgres(classification_model))
         classification_results.append(res)
 
         # Write to redis history
@@ -354,9 +359,13 @@ async def detect_and_classify_signs(
         except Exception as e:
             logging.error(f"An error occured during redis transaction: {e}")
 
+    if classification_results:
+        await write_results(classification_results, postgres_session)
+
     # Delete tmp file which we saved in the beggining
     tmp_path.unlink()
-
+    t2 = time.time()
+    logging.error(f"AFTER DETECTION TIME: {t2 - t1}")
     return classification_results
 
 
