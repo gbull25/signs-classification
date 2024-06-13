@@ -354,6 +354,9 @@ async def detect_and_classify_signs(
         except Exception as e:
             logging.error(f"An error occured during redis transaction: {e}")
 
+    # Delete tmp file which we saved in the beggining
+    tmp_path.unlink()
+
     return classification_results
 
 
