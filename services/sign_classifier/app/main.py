@@ -65,14 +65,38 @@ def make_user_id():
     return str(uuid.uuid4())
 
 
-async def write_results(classification_result: List[ClassificationResult], session):
+async def write_results(classification_result: List[ClassificationResult], session, len_threshold: int = 1000):
     classification_result = [entry.dict() for entry in classification_result]
-    insert_stmt = insert(results).values(classification_result)
-    do_update_stmt = insert_stmt.on_conflict_do_nothing(index_elements=["id"])
+    if len(classification_result) > len_threshold:
+        num_batches = len(classification_result) / len_threshold
+        start = 0
+        stop = len_threshold
+        for i_ in range(int(num_batches)):
+            batch = classification_result[start:stop]
+            start = stop
+            stop += len_threshold
 
-    await session.execute(do_update_stmt)
-    await session.commit()
-    return {"status": "success"}
+            insert_stmt = insert(results).values(batch)
+            do_update_stmt = insert_stmt.on_conflict_do_nothing(index_elements=["id"])
+
+            await session.execute(do_update_stmt)
+            await session.commit()
+
+        if num_batches % 1 != 0:
+            last_batch = classification_result[start:]
+            insert_stmt = insert(results).values(last_batch)
+            do_update_stmt = insert_stmt.on_conflict_do_nothing(index_elements=["id"])
+
+            await session.execute(do_update_stmt)
+            await session.commit()
+        return {"status": "success"}
+    else:
+        insert_stmt = insert(results).values(classification_result)
+        do_update_stmt = insert_stmt.on_conflict_do_nothing(index_elements=["id"])
+
+        await session.execute(do_update_stmt)
+        await session.commit()
+        return {"status": "success"}
 
     # classification_result = [entry.dict() for entry in classification_result]
     # stmt = op.bulk_insert(results, classification_result)
