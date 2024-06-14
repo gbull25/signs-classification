@@ -28,9 +28,9 @@ async def cmd_start(message: types.Message):
     user_full_name = message.from_user.full_name
     user_id = message.from_user.id
     await message.answer(f'Привет, {user_full_name}\!\nЭтот бот умеет '
-                         f'предсказывать класс немецких дорожных знаков\.\n'
-                         f'Загрузи картинку со знаком или даже несколько, '
-                         f'и бот попробует угадать, какой класс знака на них изображен\.')
+                         f'предсказывать класс российских дорожных знаков\.\n'
+                         f'Загрузи картинку, альбом фотографий, видео или приложи ссылку на YouTube'
+                         f'и бот попробует найти и классифицировать все знаки\.')
 
     # Set default model for new user
     model = await redis.get(user_id)
@@ -50,7 +50,7 @@ async def cmd_start(message: types.Message):
     builder.row(bt2, bt3, bt4)
     builder.row(bt5, bt6)
 
-    await message.answer("Что бы вы хотели узнать?",
+    await message.answer("Что бы вы хотели сделать?",
                          reply_markup=builder.as_markup(resize_keyboard=True))
 
 
