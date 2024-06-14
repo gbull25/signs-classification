@@ -8,11 +8,14 @@ import pandas as pd
 import base64
 
 import redis
+<<<<<<< HEAD
 from fastapi import Depends, FastAPI, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse
+=======
+from fastapi import Depends, FastAPI, Request, UploadFile
+>>>>>>> vitya-dev
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
-from imageio import v3 as iio
 from pydantic import BaseModel
 from sqlalchemy.dialects.postgresql import insert
 
@@ -57,7 +60,7 @@ class ClassificationResult(BaseModel):
 class DetectionResult(BaseModel):
     """Classification result validation model."""
     signs_bboxes:  List | None = None
-    #message: str = "No prediction was made"
+    # message: str = "No prediction was made"
 
 
 def get_redis():
@@ -337,18 +340,14 @@ async def detect_and_classify_signs(
         sign = CroppedSign(
             user_id=user_id,
             result_filepath=data.annotated_filepath,
-            img=obj["cropped_img"],
-            bbox=obj["bbox"],
             detection_id=id,
-            detection_conf=obj["detection_conf"],
             frame_number=frame_number,
-            detection_speed=obj["detection_speed"]
+            **obj
         )
         # Classify sign using cnn
         sign.classify_cnn(MODELS.cnn_model)
         logging.info(f"Prediction results: {sign.classification_results['cnn']}")
 
-        logging.error(sign.to_postgres("cnn"))
         res = ClassificationResult(**sign.to_postgres("cnn"))
         await write_results(res, postgres_session)
         classification_results.append(res)
@@ -363,6 +362,9 @@ async def detect_and_classify_signs(
             logging.info(f"Stream length: {redis_conn.xlen('predictions:history')}")
         except Exception as e:
             logging.error(f"An error occured during redis transaction: {e}")
+
+    # Delete tmp file which we saved in the beggining
+    tmp_path.unlink()
 
     return classification_results
 

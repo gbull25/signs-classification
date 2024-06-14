@@ -5,7 +5,6 @@ import logging
 import pathlib
 import time
 from collections import defaultdict
-from copy import deepcopy
 from typing import Dict, Union
 
 import cv2
@@ -195,42 +194,28 @@ class CroppedSign():
         """
         Make modified dict of the self attributes to store in redis.
         """
-        res = {}
+        res = dict(self)
+        classification_results = res.pop("classification_results")
+        for model, results in classification_results.items():
+            for param, value in results.items():
+                new_key = model + "-" + param
+                res[new_key] = value
 
-        for key, val in self.__dict__.items():
-            if key == "classification_results":
-                for model, results in val.items():
-                    for k, v in results.items():
-                        res[model+"-"+k] = v
-                continue
-            if key == "img":
-                res[key] = val
-                continue
-            if val is None:
-                res[key] = "no_data"
-            else:
-                res[key] = val
-            logging.info(f"Key: {key}, {type(key)}, Value: {val}, {type(val)}")
         return res
 
     def to_postgres(self, model_used):
-        res = {}
+        res = dict(self)
+        _ = res.pop("img")
+        classification_results = res.pop("classification_results")
 
-        for key, val in self.__dict__.items():
-            if key == "classification_results":
-                for k, v in self.classification_results[model_used].items():
-                    res[k.replace(model_used, "")] = v
-                continue
-            if key == "img":
-                continue
-            else:
-                res[key] = val
-            logging.info(f"Key: {key}, {type(key)}, Value: {val}, {type(val)}")
+        for key, val in classification_results[model_used].items():
+            res[key] = val
+
         return res
 
     def to_html(self) -> Dict[str, Union[str, int]]:
         """"""
-        res = deepcopy(self.__dict__)
+        res = dict(self)
         res["img"] = base64.b64encode(res["img"]).decode("utf-8")
 
         return res
@@ -266,3 +251,7 @@ class CroppedSign():
         res["classification_results"] = classification_results
 
         return cls(**res)
+
+    def __iter__(self):
+        for key in self.__dict__.keys():
+            yield key, getattr(self, key)
