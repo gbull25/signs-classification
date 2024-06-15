@@ -13,7 +13,7 @@ https://github.com/gbull25/signs-classification/assets/79256016/39836018-8c9c-4e
 - [Телеграм бот](https://hub.docker.com/repository/docker/gbull25/tg_bot/general)
 - [Фастапи сервис](https://hub.docker.com/repository/docker/gbull25/sign_classifier/general)
 
-# Процесс запуска сервиса
+## Процесс запуска сервиса
 
 В данной ветке, в отличие от остальных, присутствует скрытый файл .env с переменными окружения для БД и Redis.
 
@@ -26,7 +26,7 @@ https://github.com/gbull25/signs-classification/assets/79256016/39836018-8c9c-4e
 
 Вы можете написать нам [Глеб](https://t.me/jdbelg) или [Витя](https://t.me/onthebox) в телеграме, мы с удовольствием ответим на ваши вопросы по проекту.
 
-Схема репозитория
+## Схема репозитория
 ------------
 ```
    .
