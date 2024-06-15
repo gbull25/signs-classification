@@ -13,14 +13,14 @@ https://github.com/gbull25/signs-classification/assets/79256016/39836018-8c9c-4e
 - [Телеграм бот](https://hub.docker.com/repository/docker/gbull25/tg_bot/general)
 - [Фастапи сервис](https://hub.docker.com/repository/docker/gbull25/sign_classifier/general)
 
-# Процесс запуска репозитория
+# Процесс запуска сервиса
 
 В данной ветке, в отличие от остальных, присутствует скрытый файл .env с переменными окружения для БД и Redis.
 
 Процесс запуска проекта:
 
 1. Склонировать репозиторий 
-2. Создать бота в Telegram, положить .env файл с заполенной переменной окружения BOT_TOKEN в директорию signs_classification/services/tg_bot
+2.(Опционально) Если вы планируете использовать Telegram бота: создать бота, положить .env файл с заполенной переменной окружения BOT_TOKEN в директорию signs_classification/services/tg_bot
 3. Перейти в директорию signs_classification/services
 4. Выполнить команду **docker-compose build**, а затем **docker compose up**
 
@@ -267,10 +267,6 @@ https://github.com/gbull25/signs-classification/assets/79256016/39836018-8c9c-4e
 ## Планы по развитию проекта
 
 - Добавление GAN при обучении CNN и YOLO на датасете RTSD для симуляции редко встречающихся знаков​.
-
-- Реализация сервиса хранения и визуализации информации о найденных дорожных знаках (база данных со знаками, визуализация на картах)​.
-
-- Демо-вариант с обработкой панорам с open-source онлайн-карт (OSM).
 
 ### Куратор
 
