@@ -1,6 +1,8 @@
 # Детекция и классификация дорожных знаков
 Проект посвящен созданию сервиса детекции и классификации дорожных знаков. 
 
+![Demo video]("readme_data/demo_case.mp4")
+
 У проекта имеется несколько этапов развития. Подробно о них можно почитать ниже.
 
 В качестве обучающего датасета взят каноничный в этой области [GTSRB](https://www.kaggle.com/datasets/meowmeowmeowmeowmeow/gtsrb-german-traffic-sign).
@@ -10,30 +12,28 @@
 - [Телеграм бот](https://hub.docker.com/repository/docker/gbull25/tg_bot/general)
 - [Фастапи сервис](https://hub.docker.com/repository/docker/gbull25/sign_classifier/general)
 
-# Комментарии для проверяющего
+# Процесс запуска репозитория
 
 В данной ветке, в отличие от остальных, присутствует скрытый файл .env с переменными окружения для БД и Redis.
 
 Процесс запуска проекта:
 
 1. Склонировать репозиторий 
-2. Перейти в текующую ветку (checkpoint_nine_fix)
+2. Создать бота в Telegram, положить .env файл с заполенной переменной окружения BOT_TOKEN в директорию signs_classification/services/tg_bot
 3. Перейти в директорию signs_classification/services
-4. Выполнить команду **docker-compose up**
+4. Выполнить команду **docker-compose build**, а затем **docker compose up**
 
-На github, из-за ограничения по весу, невозможно залить некоторые модели, использующиеся в проекте. Поэтому в текущей ветке используется только лучшая, CNN.
-По этой причине при классификации будет невозможно выбрать другие модели.
-Вы можете написать нам [Глеб](https://t.me/jdbelg) или [Витя](https://t.me/onthebox) в телеграме, мы с удовольствием вышлем вам остальные модели.
+Вы можете написать нам [Глеб](https://t.me/jdbelg) или [Витя](https://t.me/onthebox) в телеграме, мы с удовольствием ответим на ваши вопросы по проекту.
 
-Да и вообще, по любым вопросам, пожалуйста, пишите нам! С радостью ответим.
-
-Схема репозитория (WIP)
+Схема репозитория
 ------------
 ```
    .
    ├── jupyter                      <- main .ipynb files
    │   ├── CNN_exp.ipynb
    │   ├── EDA.ipynb
+   │   ├── CNN_transfer.ipynb
+   │   ├── rtsd-yolo-test.ipynb
    │   ├── HOG.ipynb
    │   └── SIFT.ipynb
    ├── LICENSE
@@ -43,36 +43,61 @@
    ├── README.md
    ├── requirements.txt
    ├── services
-   │   ├── docker-compose.yaml
+   │   ├── docker-compose.yaml      <- main docker compose
    │   ├── sign_classifier
-   │   │   ├── app                  <- FastAPI service
-   │   │   │   ├── classify.py
+   │   │   ├── dockerfile
+   │   │   ├── docker.sh
+   │   │   ├── requirements.txt
+   │   │   ├── app                  <- FastAPI service main dir
+   │   │   │   ├── alembic.ini
    │   │   │   ├── cnn_model.py
+   │   │   │   ├── cropped_sign.py
    │   │   │   ├── log_conf.yaml
    │   │   │   ├── main.py
-   │   │   │   └── settings.py
-   │   │   ├── dockerfile
-   │   │   ├── models
-   │   │   │   ├── cnn_torch.pt
-   │   │   │   ├── kmeans.gz
-   │   │   │   ├── lzma_hog_proba.xz
-   │   │   │   └── sift_svm.gz
-   │   │   └── requirements.txt
-   │   └── tg_bot                   <- telegram bot service
+   │   │   │   ├── model_loader.py
+   │   │   │   ├── numbers_to_classes.csv
+   │   │   │   ├── settings.py
+   │   │   │   ├── sign_detection.py
+   │   │   │   ├── utils.py
+   │   │   ├───auth                 <- FastAPI service auth module
+   │   │   │   ├── .env
+   │   │   │   ├── base_config.py
+   │   │   │   ├── config.py
+   │   │   │   ├── database.py
+   │   │   │   ├── manager.py
+   │   │   │   ├── models.py
+   │   │   │   ├── router.py
+   │   │   │   ├── schemas.py
+   │   │   │   ├── utils.py
+   │   │   │
+   │   │   ├───migrations           <- Alembic migrations
+   │   │   │   └── versions
+   │   │   ├───pages                <- Some http files
+   │   │   │   ├── router.py
+   │   │   │   ├── static
+   │   │   │   └── templates
+   │   │   ├───rating               <- FastAPI service rating module
+   │   │   │   ├──  router.py
+   │   │   │   └─── schemas.py
+   │   │   └───models               <- DL models
+   │   │       ├──cnn_rtsd_final.pt
+   │   │       ├──cnn_torch.pt
+   │   │       └──yolo_best_50epochs.pt
+   │   │
+   │   └── tg_bot                   <- Telegram bot service
    │       ├── bot.py
    │       ├── config_reader.py
    │       ├── dockerfile
    │       ├── handlers             <- event handlers
-   │       │   ├── __init__.py
    │       │   ├── menu.py
    │       │   ├── predictions.py
    │       │   └── rating.csv
    │       ├── middleware.py        <- middleware fucntions
    │       ├── requirements.txt
+   │       ├── sample_videos        <- directory with sample videos for bot
    │       ├── sample_images        <- directory with sample images for bot
    │       └── tests                <- unit tests for telegram bot
    │           ├── htmlcov          <- directory with html coverage report
-   │           ├── __init__.py
    │           └── test_handlers.py
    ├── setup.cfg
    └── setup.py
