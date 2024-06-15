@@ -13,14 +13,14 @@ https://github.com/gbull25/signs-classification/assets/79256016/39836018-8c9c-4e
 - [Телеграм бот](https://hub.docker.com/repository/docker/gbull25/tg_bot/general)
 - [Фастапи сервис](https://hub.docker.com/repository/docker/gbull25/sign_classifier/general)
 
-## Процесс запуска сервиса
+## Процесс запуска сервисов
 
 В данной ветке, в отличие от остальных, присутствует скрытый файл .env с переменными окружения для БД и Redis.
 
 Процесс запуска проекта:
 
 1. Склонировать репозиторий 
-2.(Опционально) Если вы планируете использовать Telegram бота: создать бота, положить .env файл с заполенной переменной окружения BOT_TOKEN в директорию signs_classification/services/tg_bot
+2. (Опционально) Если вы планируете использовать Telegram бота: создать бота, положить .env файл с заполенной переменной окружения BOT_TOKEN в директорию signs_classification/services/tg_bot
 3. Перейти в директорию signs_classification/services
 4. Выполнить команду **docker-compose build**, а затем **docker compose up**
 
@@ -251,17 +251,21 @@ https://github.com/gbull25/signs-classification/assets/79256016/39836018-8c9c-4e
 
 На данный момент оба модуля упакованы в два докер контейнера. Телеграм бот отвечает на запросы пользователя, используя функционал сервиса FastAPI.
 
-![Alt Text](readme_data/workflow.png)
+Так выглядит процесс обработки инпута:
+
+![тут должна быть картинка..](readme_data/dataflow.png)
+
+![тут должна быть картинка..](readme_data/workflow.png)
 
 Ниже на гифках краткая демонстрация функционала веб-интерфейса и Телеграм бота.
 
 Веб-интерфейс FastAPI
 
-![Alt Text](readme_data/fastapi.gif)
+![тут должна быть картинка..](readme_data/fastapi.gif)
 
 Телеграм бот
 
-![Alt Text](readme_data/tg_bot.gif)
+![тут должна быть картинка..](readme_data/tg_bot.gif)
 
 
 ## Планы по развитию проекта
