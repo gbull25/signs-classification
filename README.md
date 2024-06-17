@@ -265,7 +265,7 @@ https://github.com/gbull25/signs-classification/assets/79256016/39836018-8c9c-4e
 
 Телеграм бот
 
-![тут должна быть картинка..](readme_data/tg_bot.gif)
+[Screencast from 2024-06-17 12-52-06.webm](https://github.com/gbull25/signs-classification/assets/79256016/21520196-d15d-42ac-bdc6-e0eafbb1e21e)
 
 
 ## Планы по развитию проекта
