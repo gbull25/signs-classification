@@ -23,7 +23,7 @@ class CroppedSign():
         reader = csv.reader(f)
         next(reader)
         for row in reader:
-            describe_by_class[int(row[0])] = row[1]
+            describe_by_class[int(row[0])] = row[1] + ':' + row[2]
 
     def __init__(
             self,

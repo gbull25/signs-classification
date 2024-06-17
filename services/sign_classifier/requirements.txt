@@ -45,6 +45,7 @@ fastapi-users==10.3.0
 fastapi-users-db-sqlalchemy==4.0.4
 fastapi_amis_admin==0.4.2
 fastapi_user_auth==0.4.2
+folium==0.16.0
 greenlet==2.0.1
 h11==0.14.0
 httpcore==0.16.3
