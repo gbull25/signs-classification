@@ -8,12 +8,8 @@ import pandas as pd
 import base64
 
 import redis
-<<<<<<< HEAD
-from fastapi import Depends, FastAPI, Request, Response, UploadFile
-from fastapi.responses import HTMLResponse
-=======
 from fastapi import Depends, FastAPI, Request, UploadFile
->>>>>>> vitya-dev
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -31,7 +27,9 @@ from .rating.router import router as router_rating
 from .sign_detection import SignDetection
 from .utils import pool
 
-from folium import Map, Marker, Icon, IFrame, Popup, CustomIcon
+import base64
+import folium
+import pandas as pd
 
 # from fastapi_cache import FastAPICache
 # from fastapi_cache.backends.redis import RedisBackend
@@ -368,8 +366,6 @@ async def detect_and_classify_signs(
 
     return classification_results
 
-
-
 @app.post("/map", response_class=HTMLResponse)
 async def map(
     request: Request,
@@ -379,15 +375,14 @@ async def map(
     redis_conn=Depends(get_redis),
     postgres_session=Depends(get_async_session)
         ):
-    """Classify which sign is in the image.
-
+    """ Draw a map with classification results
     Args:
         - request: http request;
         - file_img: uploaded image of the sign;
         - model_name: name of the model to use for detection.
 
     Returns:
-        - DetectionResult: the result of the detection.
+        - mapit: HTML with results of the detection.
     """
     if user_id == "0":
         user_id = make_user_id()
@@ -411,17 +406,17 @@ async def map(
 
     data = SignDetection(tmp_path, user_id, MODELS.yolo_model)
     data.detect()
-    #classification_results = []
 
-    # Map
+    # Create map object 
     track = pd.read_csv("app/track.csv")[["lat", "lon"]].values.tolist()
-    mapit = Map(location=[55.7522, 37.6156], zoom_start=10)
+    mapit = folium.Map(location=[55.7522, 37.6156], zoom_start=10)
+
     # # Generate cropped_signs from detected objects
     for frame_number, id, obj in data.stream_objects():
         sign = CroppedSign(
             user_id=user_id,
             result_filepath=data.annotated_filepath,
-            img=obj["cropped_img"],
+            img=obj["img"],
             bbox=obj["bbox"],
             detection_id=id,
             detection_conf=obj["detection_conf"],
@@ -432,12 +427,7 @@ async def map(
         sign.classify_cnn(MODELS.cnn_model)
         logging.info(f"Prediction results: {sign.classification_results['cnn']}")
 
-        #logging.error(sign.to_postgres("cnn"))
         res = ClassificationResult(**sign.to_postgres("cnn"))
-        #await write_results(res, postgres_session)
-        #classification_results.append(res)
-        
-        #pushpin = CustomIcon(sign.img, icon_size=(30,30))
 
         #Add Image
         encoded = base64.b64encode(sign.img)
@@ -450,29 +440,31 @@ async def map(
         html_df = df_res.T.to_html(
         classes="table table-striped table-hover table-condensed table-responsive")
 
+        # Concatanate image and table 
         html += html_df
-        popup = Popup(html, max_width="100%")
+        popup = folium.Popup(html, max_width="100%")
 
-        Marker(
+        # Add marker
+        folium.Marker(
             location=[track[sign.frame_number // 30][0], track[sign.frame_number // 30][1]], 
             tooltip="Нажмите для подробной информации!", 
             popup = popup, 
-            icon=pushpin,
+            icon=folium.Icon(color="blue"),
             radius=8
         ).add_to(mapit)
-        
-        
 
         # Write to redis history
-        try:
+    try:
             redis_conn.xadd(
                 "predictions:history",
                 sign.to_redis()
             )
             logging.info("Successfully added entry to the 'prediction:history'.")
             logging.info(f"Stream length: {redis_conn.xlen('predictions:history')}")
-        except Exception as e:
+    except Exception as e:
             logging.error(f"An error occured during redis transaction: {e}")
+
+    # Return HTML with map
     return mapit.get_root().render()
 
 # if __name__ == "__main__":
