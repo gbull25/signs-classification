@@ -11,6 +11,21 @@ from .cnn_model import gtrsb_model
 
 
 class ModelLoader():
+    """Load all models into RAM for further accessibility.
+
+    Attributes:
+        hog_model_path (pathlib.Path): Path to the hog model file.
+        hog (Any): loaded hog model.
+        kmeans_model_path (pathlib.Path): Path to the kmeans model file.
+        kmeans (Any): loaded kmeans model.
+        sift_model_path (pathlib.Path): Path to the sift model file.
+        sift (Any): loaded sift model.
+        cnn_model_path (pathlib.Path): Path to the cnn model file.
+        cnn (Any): loaded sift model.
+        yolo_model_path (pathlib.Path): Path to the yolo model file.
+        yolo (Any): loaded yolo model.
+        cnn_dims (Tuple[int]): cnn model dimensions.
+    """
     def __init__(
             self,
             hog_model_path: pathlib.Path | str = settings.hog_model_path,

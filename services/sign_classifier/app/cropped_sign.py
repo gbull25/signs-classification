@@ -5,7 +5,7 @@ import logging
 import pathlib
 import time
 from collections import defaultdict
-from typing import Dict, Union
+from typing import Any, Dict, Union
 
 import cv2
 import numpy as np
@@ -16,8 +16,28 @@ from torchvision.transforms.v2 import Compose, Resize, ToTensor
 
 
 class CroppedSign():
+    """Representation of the cropped image of the traffic sign.
+    All the data and functions associated with it for classification process is attached.
 
-    describe_by_class = {}
+    Class Attributes:
+        describe_by_class (Dict[int, str]): Dict with the human-readable class names.
+
+    Attributes:
+        user_id (str): Id of the user who uploaded this file.
+        result_filepath (str): Path to the annotated file, in which current sign was detected.
+        img (bytes): Bytes representation of the cropped image.
+        bbox (str): String reprecentation of the bbox.
+        detection_id (int): Detection id of the current sign.
+        detection_conf (float): Detection confidence of the current sign.
+        frame_number (int): Number of a frame in which current sign was observed.
+        detection_speed (float): YOLO inference speed performed during processing the annotated file,
+        in which current sign was detected.
+        classification_speed (float): Classification model inference speed during processing current sign.
+        classification_results (Dict[str, Dict[str, Union[str, float]]]): Results of the last classification processes
+        performed with different models on current sign.
+    """
+
+    describe_by_class: Dict[int, str] = {}
 
     with open("app/numbers_to_classes.csv", "r") as f:
         reader = csv.reader(f)
@@ -38,7 +58,7 @@ class CroppedSign():
             classification_speed: float = 0,
             classification_results: dict = {}
             ):
-
+        """Initialize class instance."""
         self.user_id = user_id
         if isinstance(result_filepath, pathlib.Path):
             self.result_filepath = str(result_filepath)
@@ -56,7 +76,12 @@ class CroppedSign():
         else:
             self.classification_results = classification_results
 
-    def timer(model_name):
+    def timer(model_name: str):
+        """Decorator to measure inference time during classifiaction.
+
+        Args:
+            model_name (str): Name of the model to classify sign with.
+        """
         def inner(func):
             def wrapper(self, *arg, **kw):
                 t1 = time.time()
@@ -67,14 +92,14 @@ class CroppedSign():
             return wrapper
         return inner
 
-    def _preprocess_for_sift(self, img_shape=(32, 32)):
-        """
-        Preprocess image, represented by np.array.
-
-        Store preprocessed image in the new attribute "preprocessed_sift_img".
+    def _preprocess_for_sift(self, img_shape=(32, 32)) -> np.ndarray:
+        """Preprocess image for SVM on SIFT classification.
 
         Args:
-            - img_shape (tuple=(32, 32)): resulting shape of an image, defaults to 32x32.
+            img_shape (tuple, optional): Size to resize image to. Defaults to (32, 32).
+
+        Returns:
+            np.ndarray: Preprocessed image.
         """
         # Equalize histogram, convert to gray
         img = np.array(Image.open(io.BytesIO(self.img)).convert('RGB'))
@@ -97,9 +122,11 @@ class CroppedSign():
         return normalized_gray_img
 
     @timer("hog")
-    def classify_hog(self, svc_hog_model):
-        """
-        Classify cropped sign image with SVC model based on HOG feature extraction.
+    def classify_hog(self, svc_hog_model: Any):
+        """Perform sign classification with SVM on HOG model.
+
+        Args:
+            svc_hog_model (Any): SVM on HOG model.
         """
         # Convert the image to grayscale
         colored_img = np.array(Image.open(io.BytesIO(self.img)).convert('RGB'))
@@ -126,9 +153,11 @@ class CroppedSign():
         }
 
     @timer("sift")
-    def classify_sift(self, sift_model):
-        """
-        Classify cropped sign image with SVC model based on SIFT feature extraction.
+    def classify_sift(self, sift_model: Any):
+        """Perform sign classification with SVM on SIFT model.
+
+        Args:
+            sift_model (Any): SVM on SIFT model.
         """
         kmeans_model = sift_model["kmeans"]
         sift_model = sift_model["sift"]
@@ -159,9 +188,11 @@ class CroppedSign():
         }
 
     @timer("cnn")
-    def classify_cnn(self, cnn_model):
-        """
-        Classify cropped sign image with CNN model.
+    def classify_cnn(self, cnn_model: Any):
+        """Perform sign classification with CNN model.
+
+        Args:
+            cnn_model (Any): CNN model.
         """
         model = cnn_model.eval()
 
@@ -192,13 +223,21 @@ class CroppedSign():
             "sign_description": self.describe_by_class[pred_class.item()]
         }
 
-    def classify(self, model_name, classification_model):
+    def classify(self, model_name: str, classification_model: Any):
+        """Call needed classification method.
+
+        Args:
+            model_name (str): The name of the classification model.
+            classification_model (_Any): Classifiaction model itself.
+        """
         classification_method = getattr(self, f"classify_{model_name}")
         classification_method(classification_model)
 
     def to_redis(self) -> Dict[str, Union[str, int]]:
-        """
-        Make modified dict of the self attributes to store in redis.
+        """Bring all the class instance data to requared format to write to redis.
+
+        Returns:
+            Dict[str, Union[str, int]]: All the formated class instance data.
         """
         res = dict(self)
         classification_results = res.pop("classification_results")
@@ -209,9 +248,16 @@ class CroppedSign():
 
         return res
 
-    def to_postgres(self, model_used):
+    def to_postgres(self, model_used: str) -> Dict[str, Union[str, int]]:
+        """Bring all the class instance data to requared format to write to PostgreSQL.
+
+        Args:
+            model_used (str): The name of the model used for the classification.
+
+        Returns:
+            Dict[str, Union[str, int]]: All the foramted class instance data.
+        """
         res = dict(self)
-        # res = deepcopy(self.__dict__)
         _ = res.pop("img")
         classification_results = res.pop("classification_results")
 
@@ -223,15 +269,26 @@ class CroppedSign():
         return res
 
     def to_html(self) -> Dict[str, Union[str, int]]:
-        """"""
+        """Bring all the class instance data to requared format to render to HTML.
+
+        Returns:
+            Dict[str, Union[str, int]]: All the foramted class instance data.
+        """
         res = dict(self)
         res["img"] = base64.b64encode(res["img"]).decode("utf-8")
 
         return res
 
     @classmethod
-    def from_redis(cls, init_data):
-        """Call init with data from redis"""
+    def from_redis(cls, init_data: Dict[bytes, bytes]):
+        """Prepare the data from redis and initialize the class instance with it.
+
+        Args:
+            init_data (Dict[bytes, bytes]): Data from redis.
+
+        Returns:
+            CroppedSign: CroppedSign instance.
+        """
         res = {}
         classification_models = ("cnn", "hog", "sift")
         classification_results = defaultdict(dict)
@@ -262,5 +319,6 @@ class CroppedSign():
         return cls(**res)
 
     def __iter__(self):
+        """__Iter__ method overloaded."""
         for key in self.__dict__.keys():
             yield key, getattr(self, key)
