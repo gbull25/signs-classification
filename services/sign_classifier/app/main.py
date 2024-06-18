@@ -1,4 +1,3 @@
-import base64
 import logging
 import pathlib
 import shutil
@@ -6,13 +5,13 @@ import time
 import uuid
 from tempfile import NamedTemporaryFile
 from typing import Dict, List, Union
-
-import folium
 import pandas as pd
+import base64
+
 import redis
 from fastapi import Depends, FastAPI, Request, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.dialects.postgresql import insert
@@ -28,6 +27,10 @@ from .pages.router import router as router_pages
 from .rating.router import router as router_rating
 from .sign_detection import SignDetection
 from .utils import pool
+
+import base64
+import folium
+import pandas as pd
 
 # from fastapi_cache import FastAPICache
 # from fastapi_cache.backends.redis import RedisBackend
@@ -318,15 +321,14 @@ def classify_sign(
 @app.post("/detect_and_classify_signs")
 async def detect_and_classify_signs(
     request: Request,
-    file_data: UploadFile | None = None,
-    yotube_link: str | None = None,
+    file_data: UploadFile,
     classification_model: str = "cnn",
     detection_model: str = "yolo",
     suffix: str = "_",
     user_id="0",
     redis_conn=Depends(get_redis),
     postgres_session=Depends(get_async_session)
-        ) -> List[ClassificationResult] | None:
+        ) -> List[ClassificationResult]:
     """Classify which sign is in the image.
 
     Args:
@@ -339,38 +341,25 @@ async def detect_and_classify_signs(
     """
     if user_id == "0":
         user_id = make_user_id()
-    
-    # Check if got something to process
-    if not file_data and not yotube_link:
-        logging.info(f"Neither the file nor the link was provide. Nothing to process.")
-        return None
-    
-    need_to_delete = False
-    
-    if file_data:
-        # Copy file to named tmp file
-        # https://stackoverflow.com/a/63581187
-        logging.info(f"Request received; host: {request.client.host}; "
-                f"filename: {file_data.filename}, content_type: {file_data.content_type}")
-        if suffix == "_":
-            suffix = pathlib.Path(file_data.filename).suffix
-        try:
-            with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-                shutil.copyfileobj(file_data.file, tmp)
-                path_for_detection = pathlib.Path(tmp.name)
-        except Exception as e:
-            logging.error(f"Unexpected error while managing uploaded file:\n\n {e}")
-            return ClassificationResult(message="Unexpected error while reading uploaded file")
-        finally:
-            file_data.file.close()
-            need_to_delete = True
+    logging.info(f"Request received; host: {request.client.host}; "
+                 f"filename: {file_data.filename}, content_type: {file_data.content_type}")
 
-    elif yotube_link:
-        logging.info(f"Request received; host: {request.client.host}; "
-                     f"Youtube link: {yotube_link}")
-        path_for_detection = yotube_link
+    # Copy file to named tmp file
+    # https://stackoverflow.com/a/63581187
+    if suffix == "_":
+        suffix = pathlib.Path(file_data.filename).suffix
 
-    data = SignDetection(path_for_detection, user_id, MODELS.get_model(detection_model))
+    try:
+        with NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            shutil.copyfileobj(file_data.file, tmp)
+            tmp_path = pathlib.Path(tmp.name)
+    except Exception as e:
+        logging.error(f"Unexpected error while managing uploaded file:\n\n {e}")
+        return ClassificationResult(message="Unexpected error while reading uploaded file")
+    finally:
+        file_data.file.close()
+
+    data = SignDetection(tmp_path, user_id, MODELS.get_model(detection_model))
     data.detect()
     classification_results = []
 
@@ -405,8 +394,7 @@ async def detect_and_classify_signs(
         await write_results(classification_results, postgres_session)
 
     # Delete tmp file which we saved in the beggining
-    if need_to_delete:
-        path_for_detection.unlink()
+    tmp_path.unlink()
     t2 = time.time()
     logging.error(f"AFTER DETECTION TIME: {t2 - t1}")
     return classification_results
