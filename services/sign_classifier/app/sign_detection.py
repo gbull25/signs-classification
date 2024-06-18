@@ -10,11 +10,14 @@ from . import settings
 
 class SignDetection():
 
-    def __init__(self, data: pathlib.Path, user_id: str, yolo_model) -> None:
+    def __init__(self, data: pathlib.Path | str, user_id: str, yolo_model) -> None:
         self.data = data
         self.project_path = settings.user_data_storage_path / user_id / str(int(round(time.time() * 1000)))
         self.project_path.mkdir(parents=True, exist_ok=True)
-        self.annotated_filepath = self.project_path / "track" / self.data.name
+        if isinstance(data, pathlib.Path):
+            self.annotated_filepath = self.project_path / "track" / self.data.name
+        else:
+            self.annotated_filepath = self.project_path / "track" / "youtube_link.avi"
         self.yolo_model = yolo_model
         self.detection_result = []
         self.objects: Dict[int, Dict[str, Dict[str, Union[str, bytes, float]]]] = defaultdict(dict)

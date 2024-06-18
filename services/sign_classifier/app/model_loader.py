@@ -21,17 +21,17 @@ class ModelLoader():
             cnn_dims: Tuple[int] = (7500, 106),
             ):
         # Load ML models
-        logging.info("Initialized ModelLoader instance.")
-        logging.info("Loading ML models...")
-        try:
-            self.hog = joblib.load(hog_model_path)
-            self.sift = {
-                "kmeans": joblib.load(kmeans_model_path),
-                "sift": joblib.load(sift_model_path)
-            }
-            logging.info("Successfully loaded ML models!")
-        except FileNotFoundError as fnfe:
-            logging.error(f"Error occured while loading ML models:\n\n{fnfe}")
+        # logging.info("Initialized ModelLoader instance.")
+        # logging.info("Loading ML models...")
+        # try:
+        #     self.hog = joblib.load(hog_model_path)
+        #     self.sift = {
+        #         "kmeans": joblib.load(kmeans_model_path),
+        #         "sift": joblib.load(sift_model_path)
+        #     }
+        #     logging.info("Successfully loaded ML models!")
+        # except FileNotFoundError as fnfe:
+        #     logging.error(f"Error occured while loading ML models:\n\n{fnfe}")
 
         # Init and load cnn_model
         logging.info("Loading DL models...")
