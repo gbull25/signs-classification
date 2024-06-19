@@ -1,7 +1,6 @@
 import csv
 import logging
 import pathlib
-from collections import defaultdict
 from io import BytesIO
 from tempfile import NamedTemporaryFile
 
@@ -10,9 +9,7 @@ import emoji
 import numpy as np
 import requests
 from aiogram import Bot, F, Router, types
-from aiogram.methods.send_video import SendVideo
-from aiogram.types import (BufferedInputFile, FSInputFile, InputMediaPhoto,
-                           InputMediaVideo, Message)
+from aiogram.types import FSInputFile, Message
 from aiogram.utils.media_group import MediaGroupBuilder
 from requests.exceptions import ConnectionError
 
@@ -23,13 +20,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s: [%(levelname)s] %(m
 async def form_csv(classification_data: dict):
     keys = classification_data[0].keys()
 
-    logging.info(f"Forming csv...")
+    logging.info("Forming csv...")
     with NamedTemporaryFile(delete=False, suffix=".csv", mode="w") as tmp:
         dict_writer = csv.DictWriter(tmp, keys)
         dict_writer.writeheader()
         dict_writer.writerows(classification_data)
         csv_name = tmp.name
-    logging.info(f"Done froming csv!")
+    logging.info("Done froming csv!")
     return csv_name
 
 
@@ -39,7 +36,7 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
     redis = await aioredis.from_url("redis://redis:5370")
     user_id = message.from_user.id
     model = await redis.get("user_id")
-    if model == None:
+    if model is None:
         model = "cnn"
         await redis.set(user_id, "cnn")
 
@@ -65,12 +62,14 @@ async def handle_albums(message: Message, album: list[Message], bot: Bot):
                     files={'file_data': img}, params={"user_id": str(user_id), "suffix": ".jpg"}
                 ).json()
                 if not response:
-                    logging.info(f"Received empty response, no detections occured")
+                    logging.info("Received empty response, no detections occured")
                     await message.reply(f"На {i+1} фотографии не было обнаружено ни одного знака :\(")
                 else:
                     logging.info(f"Received a response with prediciton: {response}")
                     res_csv_path = await form_csv(response)
-                    media_group_photos.add_photo(FSInputFile(path=response[0]["result_filepath"], filename=f"YOLO_result_{i}.jpg"))
+                    media_group_photos.add_photo(
+                        FSInputFile(path=response[0]["result_filepath"], filename=f"YOLO_result_{i}.jpg")
+                        )
                     media_group_csvs.add_document(FSInputFile(path=res_csv_path, filename=f"Final_result_text_{i}.csv"))
 
             except ConnectionError as ce:
@@ -97,9 +96,9 @@ async def predict_image(message: Message, bot: Bot):
     redis = await aioredis.from_url("redis://redis:5370")
     user_id = message.from_user.id
     model = await redis.get("user_id")
-    if model == None:
+    if model is None:
         model = "cnn"
-        await redis.set(user_id, "cnn")   
+        await redis.set(user_id, "cnn")
 
     try:
 
@@ -108,7 +107,7 @@ async def predict_image(message: Message, bot: Bot):
                     files={'file_data': img}, params={"user_id": str(user_id), "suffix": ".jpg"}
         ).json()
         if not response:
-            logging.info(f"Received empty response, no detections occured")
+            logging.info("Received empty response, no detections occured")
             await message.reply("Не было обнаружено ни одного знака :\(")
             return
         logging.info(f"Received a response with prediciton: {response}")
@@ -139,10 +138,10 @@ async def predict_video(message: Message, bot: Bot):
     redis = await aioredis.from_url("redis://redis:5370")
     user_id = message.from_user.id
     model = await redis.get("user_id")
-    if model == None:
+    if model is None:
         model = "cnn"
-        await redis.set(user_id, "cnn")   
-  
+        await redis.set(user_id, "cnn")
+
     await message.reply("Получил ваше видео, обрабатываю\.\.\.")
 
     try:
@@ -152,7 +151,7 @@ async def predict_video(message: Message, bot: Bot):
                     files={'file_data': vid}, params={"user_id": str(user_id), "suffix": ".avi"}
         ).json()
         if not response:
-            logging.info(f"Received empty response, no detections occured")
+            logging.info("Received empty response, no detections occured")
             await message.reply("Не было обнаружено ни одного знака :\(")
             return
         logging.info(f"Received a response with prediciton: {response}")
@@ -176,14 +175,14 @@ async def predict_video(message: Message, bot: Bot):
 
 # Хэндлер на рейтинг
 @router.callback_query(F.data.startswith("rating_"))
-async def add_rating(callback: types.CallbackQuery):
+async def add_rating(message: Message, callback: types.CallbackQuery):
 
     data = {"user_id": callback.from_user.id,
             "rating": int(callback.data.split("_")[1])}
 
     try:
 
-        requests.post("http://sign_classifier:80/rating/add_rating", json = data)
+        requests.post("http://sign_classifier:80/rating/add_rating", json=data)
 
     except ConnectionError as ce:
 

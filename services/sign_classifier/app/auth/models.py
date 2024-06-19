@@ -1,8 +1,17 @@
 from datetime import datetime
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
-from sqlalchemy import (JSON, TIMESTAMP, Boolean, Column, ForeignKey, Integer, Float,
-                        String, Table)
+from sqlalchemy import (
+    JSON,
+    TIMESTAMP,
+    Boolean,
+    Column,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+)
 
 from .database import Base, metadata
 
@@ -28,14 +37,14 @@ results = Table(
     Column("id", Integer, primary_key=True),
     Column("user_id", String, nullable=False),
     Column("result_filepath", String, nullable=False),
-    Column("frame_num", Integer, nullable=True),
     Column("detection_id", Integer, nullable=False),
     Column("detection_conf", Float, nullable=False),
     Column("sign_class", Integer, nullable=False),
     Column("sign_description", String, nullable=False),
     Column("bbox", String, nullable=False),
     Column("frame_number", Integer, nullable=False),
-    Column("detection_speed", Integer, nullable=False),
+    Column("detection_speed", Float, nullable=False),
+    Column("classification_speed", Float, nullable=False),
     Column("model_used", String, nullable=False),
 
 )

@@ -28,9 +28,9 @@ async def cmd_start(message: types.Message):
     user_full_name = message.from_user.full_name
     user_id = message.from_user.id
     await message.answer(f'Привет, {user_full_name}\!\nЭтот бот умеет '
-                         f'предсказывать класс немецких дорожных знаков\.\n'
-                         f'Загрузи картинку со знаком или даже несколько, '
-                         f'и бот попробует угадать, какой класс знака на них изображен\.')
+                         f'предсказывать класс российских дорожных знаков\.\n'
+                         f'Загрузи картинку, альбом фотографий, видео или приложи ссылку на YouTube'
+                         f'и бот попробует найти и классифицировать все знаки\.')
 
     # Set default model for new user
     model = await redis.get(user_id)
@@ -50,7 +50,7 @@ async def cmd_start(message: types.Message):
     builder.row(bt2, bt3, bt4)
     builder.row(bt5, bt6)
 
-    await message.answer("Что бы вы хотели узнать?",
+    await message.answer("Что бы вы хотели сделать?",
                          reply_markup=builder.as_markup(resize_keyboard=True))
 
 
@@ -72,14 +72,13 @@ async def info(message: types.Message):
             "со сжатием\.")
     await message.answer(text)
     text = ("Если вы пользуетесь ботом с мобильного устройства, "
-            "рекомендуется пересылать боту сообщения с полученными тестовыми картинками, "
-            "без предварительного сохранения фото на внутреннюю память телефона, "
-            "во избежание дополнительного сжатия\.")
+            "рекомендуется пересылать боту сообщения с полученными тестовыми файлами, "
+            "без предварительного сохранения на внутреннюю память телефона\.")
     await message.answer(text)
     text = ("Если вы хотите оценить бота, нажмите на кнопку "
             "'Оценить бота'\.\nУчтите, что "
             "каждый пользователь может оставить только одну оценку, "
-            "но ее можно менять\.")
+            "но ее можно менять, если вы передумаете\.")
     await message.answer(text)
     text = ("Чтобы получить теущий рейтинг бота, нажмите на кнопку "
             "'Текущий рейтинг'\.\nСпасибо и хорошего вам дня\!")
@@ -151,7 +150,7 @@ async def send_album(callback: types.CallbackQuery):
     photos_paths = glob.glob("sample_images/**")
 
     album_builder = MediaGroupBuilder(
-        caption=f"Прошу, ваши {num_photos} тестовых картинок готовы\!"
+        caption=f"Прошу, ваши {num_photos} тестовых картинок\!"
     )
 
     for i in range(num_photos):

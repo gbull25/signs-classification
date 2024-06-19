@@ -15,8 +15,8 @@
             {% for history_entry in history_list %}
                 <li>
                     <img src="data:image/jpg;base64,{{ history_entry.img }}">
-                    <b> {{ history_entry.cnn_result_class }} </b>
-                    <b> {{ history_entry.cnn_result_description }} </b>
+                    <b> {{ history_entry.classification_results.cnn.sign_class }} </b>
+                    <b> {{ history_entry.classification_results.cnn.sign_description }} </b>
                </li>
             {% endfor %}
         </ul>
