@@ -175,7 +175,7 @@ async def predict_video(message: Message, bot: Bot):
 
 # Хэндлер на рейтинг
 @router.callback_query(F.data.startswith("rating_"))
-async def add_rating(message: Message, callback: types.CallbackQuery):
+async def add_rating(callback: types.CallbackQuery):
 
     data = {"user_id": callback.from_user.id,
             "rating": int(callback.data.split("_")[1])}
@@ -187,7 +187,10 @@ async def add_rating(message: Message, callback: types.CallbackQuery):
     except ConnectionError as ce:
 
         logging.error(f"Connection refused error: {ce}")
-        await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
+        await callback.answer(
+            text="Кажется, в настоящее время сервис прилег :( Попробуйте еще разок позже!",
+            show_alert=True
+        )
         return
 
     await callback.answer(
@@ -203,11 +206,18 @@ async def current_rating(message: types.Message):
     try:
 
         scale = requests.get("http://sign_classifier:80/rating/current_rating").json()
+        rounded_rating = int(np.floor(scale["data"]))
 
     except ConnectionError as ce:
 
         logging.error(f"Connection refused error: {ce}")
         await message.reply("Кажется, в настоящее время сервис прилег :\( Попробуйте еще разок позже\!")
         return
+    
+    except TypeError as te:
 
-    await message.reply(int(np.floor(scale["data"])) * emoji.emojize(":star:"))
+        logging.error(f"Empty database.")
+        await message.reply("Пока что оценок у бота нет\. Будьте первыми\!")
+        return
+
+    await message.reply((rounded_rating) * emoji.emojize(":star:"))

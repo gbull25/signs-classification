@@ -237,7 +237,7 @@ def get_history_pretty(
     request: Request,
     n_entries: int = 10,
     redis_conn: redis.Redis = Depends(get_redis)
-        ) -> Jinja2Templates.TemplateResponse:
+        ):
     """Loads and renders to html last {n_entries} processed images from redis db.
 
     Args:
@@ -422,7 +422,7 @@ async def map(
     suffix: str = "_",
     user_id: str = "0",
     redis_conn: redis.Redis = Depends(get_redis)
-        ) -> folium.Map:
+        ):
     """THIS IS A DEMO FUNCTION OF THE WORK IN PROGRESS FEATURE.
     Draw a map with the classification results.
 
